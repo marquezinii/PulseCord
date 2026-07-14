@@ -1,8 +1,10 @@
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $workDir = Join-Path $repoRoot "work"
 $logFile = Join-Path $workDir "dev-launch.log"
+$stdoutLog = Join-Path $workDir "dev-launch.stdout.log"
+$stderrLog = Join-Path $workDir "dev-launch.stderr.log"
 
 New-Item -ItemType Directory -Path $workDir -Force | Out-Null
 Set-Location $repoRoot
@@ -31,13 +33,14 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "Rich Presence compilation failed with exit code $LASTEXITCODE." }
     }
 
-    & $bunPath run start *>> $logFile
-    if ($LASTEXITCODE -ne 0) { throw "PulseCord exited with code $LASTEXITCODE." }
+    $pulseCord = Start-Process -FilePath $bunPath -ArgumentList "run", "start" -WorkingDirectory $repoRoot -Wait -PassThru `
+        -RedirectStandardOutput $stdoutLog -RedirectStandardError $stderrLog
+    if ($pulseCord.ExitCode -ne 0) { throw "PulseCord exited with code $($pulseCord.ExitCode)." }
 } catch {
     $_ | Out-String | Add-Content $logFile
     Add-Type -AssemblyName PresentationFramework
     [System.Windows.MessageBox]::Show(
-        "PulseCord could not start. Details were saved to:`n$logFile",
+        "PulseCord could not start. Details were saved in:`n$workDir",
         "PulseCord development build",
         "OK",
         "Error"
