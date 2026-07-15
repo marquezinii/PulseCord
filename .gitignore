@@ -1,10 +1,9 @@
-dist
-node_modules
+dist/
+node_modules/
+outputs/
+work/
+*.log
 .env
 .DS_Store
 .idea/
-.zed
-resources
-work/
-outputs/
-*.log
+.vscode/

@@ -1,33 +1,34 @@
-# PulseCord roadmap
+# Roadmap
 
-## Foundation — now
+## Foundation — current
 
-- Standalone desktop shell and PulseCord identity.
-- Large Vencord/Equicord-compatible plugin and theme ecosystem.
-- Sandboxing, official-origin permission checks, pinned plugin engine, and Safe Mode recovery.
-- Local development shortcut and public source repository without public releases.
+- Independent Electron shell.
+- PulseCore lifecycle and capability metadata.
+- PulsePanel control center.
+- Original built-in visual and accessibility plugins.
+- Safe mode, settings migration, and crash recovery.
 
-## Milestone 2 — curation
+## Hardening
 
-- PulseCord-owned plugin registry and capability declarations.
-- Compatibility matrix against Discord changes.
-- Per-plugin startup time, memory budget, and crash attribution stored locally.
-- User presets: Minimal, Privacy, Creator, Accessibility, and Power User.
-- Theme validation, previews, rollback, and accessibility contrast checks.
+- Automated security tests for IPC and navigation.
+- Screen-share selection flow and permission audit.
+- Update-independent compatibility probes for visual plugins.
+- Per-plugin health and startup timing stored locally.
 
-## Milestone 3 — product quality
+## Plugin platform
 
-- Settings search spanning the app, plugins, and themes.
-- Backup, import, export, and conflict-aware sync.
-- Screen-share diagnostics and hardware encoder guidance.
-- Plugin quarantine, binary-search troubleshooting, and one-click issue reports with secrets removed.
-- Windows, macOS, and Linux packaging with reproducible builds.
+- Versioned manifest schema.
+- Capability prompts, revocation, package integrity, and signatures.
+- Sandboxed package execution.
+- Local development kit and automated compatibility tests.
 
-## Milestone 4 — distribution
+## User experience
 
-- Threat model and external security review.
-- Signed artifacts, checksums, SBOM, and provenance attestations.
-- Explicit release channels with rollback.
-- Public installer only after the maintainer approves distribution.
+- First-party theme editor.
+- Searchable local plugin catalog.
+- Import/export of settings without secrets.
+- Accessibility profiles and keyboard-first navigation.
 
-Roadmap items are directional, not promises. Security and compatibility fixes take priority over feature count.
+## Distribution
+
+Installers, auto-updates, and public releases stay disabled until the security and migration milestones are complete. Source publishing does not imply distribution readiness.

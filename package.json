@@ -1,248 +1,78 @@
 {
-    "name": "pulsecord",
-    "desktopName": "pulsecord",
-    "version": "0.1.0",
-    "private": true,
-    "description": "An open source, privacy-minded Discord desktop client mod",
-    "keywords": [
-        "discord",
-        "client-mod",
-        "plugins",
-        "themes",
-        "electron"
+  "name": "pulsecord",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Independent, open-source desktop shell for Discord with a clean-room plugin runtime",
+  "homepage": "https://github.com/marquezinii/PulseCord",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/marquezinii/PulseCord.git"
+  },
+  "bugs": {
+    "url": "https://github.com/marquezinii/PulseCord/issues"
+  },
+  "license": "GPL-3.0-or-later",
+  "author": "PulseCord contributors",
+  "main": "dist/main.cjs",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "tsc --noEmit && npm run verify:independence",
+    "dev": "npm run build && electron .",
+    "package:dir": "npm run build && electron-builder --dir",
+    "safe-mode": "npm run build && electron . --safe-mode",
+    "shortcut:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-shortcut.ps1",
+    "start": "npm run dev",
+    "verify:independence": "node scripts/verify-clean-room.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "electron": "^41.7.1",
+    "electron-builder": "^26.8.1",
+    "esbuild": "^0.28.1",
+    "typescript": "^6.0.3"
+  },
+  "engines": {
+    "node": ">=24.0.0",
+    "npm": ">=11.0.0"
+  },
+  "build": {
+    "appId": "app.pulsecord.desktop",
+    "productName": "PulseCord",
+    "executableName": "pulsecord",
+    "asar": true,
+    "files": [
+      "dist/**",
+      "package.json",
+      "LICENSE"
     ],
-    "homepage": "https://github.com/marquezinii/PulseCord",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/marquezinii/PulseCord.git"
+    "extraResources": [
+      {
+        "from": "assets/discord-symbol.svg",
+        "to": "brand/discord-symbol.svg"
+      }
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "outputs"
     },
-    "bugs": {
-        "url": "https://github.com/marquezinii/PulseCord/issues"
-    },
-    "license": "GPL-3.0-or-later",
-    "author": "PulseCord contributors",
-    "packageManager": "npm@11.16.0",
-    "main": "dist/js/main.js",
-    "scripts": {
-        "build": "bun run scripts/build/build.mts",
-        "build:dev": "bun run build --dev",
-        "check": "bun run lint && bun run testTypes",
-        "dev": "bun run start:dev",
-        "buildLibVesktop": "bun install --cwd packages/libvesktop && bun run --cwd packages/libvesktop build",
-        "compileArrpc": "bun run scripts/build/compileArrpc.mts",
-        "package": "bun run build && electron-builder",
-        "package:dir": "bun run build && electron-builder --dir",
-        "shortcut:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-shortcut.ps1",
-        "lint": "eslint",
-        "lint:fix": "bun lint --fix",
-        "start": "bun run build && electron .",
-        "start:dev": "bun run build:dev && electron .",
-        "start:watch": "bun run build:dev && bun run scripts/startWatch.mts",
-        "test": "bun lint && bun testTypes",
-        "testTypes": "tsc --noEmit",
-        "watch": "bun run build --watch",
-        "generateMeta": "bun run scripts/utils/generateMeta.mts",
-        "updateArrpcDB": "bun ./node_modules/arrpc-bun/scripts/update_db.ts",
-        "postinstall": "bun updateArrpcDB && bun compileArrpc"
-    },
-    "dependencies": {
-        "@types/ws": "^8.18.1",
-        "@typescript-eslint/eslint-plugin": "^8.60.0",
-        "@typescript-eslint/parser": "^8.60.0",
-        "arrpc-bun": "^1.4.0",
-        "electron-updater": "^6.8.3",
-        "tsutils": "^3.21.0",
-        "ws": "^8.21.0"
-    },
-    "optionalDependencies": {
-        "@vencord/venmic": "^6.1.0"
-    },
-    "devDependencies": {
-        "@equicord/types": "1.14.2",
-        "@fal-works/esbuild-plugin-global-externals": "^2.1.2",
-        "@stylistic/eslint-plugin": "^5.10.0",
-        "@types/node": "^25.9.1",
-        "@types/react": "19.2.9",
-        "dotenv": "^17.4.2",
-        "electron": "^41.7.1",
-        "electron-builder": "^26.8.1",
-        "esbuild": "^0.28.1",
-        "eslint": "^10.4.1",
-        "eslint-import-resolver-alias": "^1.1.2",
-        "eslint-plugin-path-alias": "^2.1.0",
-        "eslint-plugin-prettier": "^5.5.6",
-        "eslint-plugin-react": "^7.37.5",
-        "eslint-plugin-simple-header": "^1.2.2",
-        "eslint-plugin-simple-import-sort": "^12.1.1",
-        "eslint-plugin-unused-imports": "^4.4.1",
-        "libvesktop": "file:packages/libvesktop",
-        "prettier": "^3.8.3",
-        "source-map-support": "^0.5.21",
-        "tsx": "^4.22.3",
-        "type-fest": "^5.6.0",
-        "typescript": "^6.0.3",
-        "typescript-eslint": "^8.60.0",
-        "xml-formatter": "^3.7.0"
-    },
-    "engines": {
-        "bun": ">=1.3.0",
-        "node": ">=24.0.0",
-        "npm": ">=11.0.0"
-    },
-    "overrides": {
-        "@vencord/venmic": {
-            "cmake-js": "^8.0.0"
-        },
-        "tar": "^7.5.20"
-    },
-    "build": {
-        "appId": "app.pulsecord.desktop",
-        "productName": "PulseCord",
-        "executableName": "pulsecord",
-        "files": [
-            "!*",
-            "!node_modules",
-            "dist/js",
-            "static",
-            "package.json",
-            "LICENSE"
-        ],
-        "protocols": {
-            "name": "Discord",
-            "schemes": [
-                "discord"
-            ]
-        },
-        "beforePack": "scripts/build/beforePack.mjs",
-        "afterPack": "scripts/build/afterPack.mjs",
-        "linux": {
-            "icon": "build/icon.svg",
-            "category": "Network",
-            "maintainer": "PulseCord contributors",
-            "target": [
-                {
-                    "target": "deb",
-                    "arch": [
-                        "x64",
-                        "arm64"
-                    ]
-                },
-                {
-                    "target": "tar.gz",
-                    "arch": [
-                        "x64",
-                        "arm64"
-                    ]
-                },
-                {
-                    "target": "rpm",
-                    "arch": [
-                        "x64",
-                        "arm64"
-                    ]
-                },
-                {
-                    "target": "AppImage",
-                    "arch": [
-                        "x64",
-                        "arm64"
-                    ]
-                }
-            ],
-            "desktop": {
-                "entry": {
-                    "Name": "PulseCord",
-                    "GenericName": "Internet Messenger",
-                    "Type": "Application",
-                    "Categories": "Network;InstantMessaging;Chat;",
-                    "Keywords": "discord;plugins;themes;electron;chat;pulsecord",
-                    "MimeType": "x-scheme-handler/discord",
-                    "StartupWMClass": "pulsecord"
-                }
-            }
-        },
-        "mac": {
-            "target": [
-                {
-                    "target": "default",
-                    "arch": "universal"
-                }
-            ],
-            "category": "public.app-category.social-networking",
-            "darkModeSupport": true,
-            "extendInfo": {
-                "NSMicrophoneUsageDescription": "This app needs access to the microphone",
-                "NSCameraUsageDescription": "This app needs access to the camera",
-                "com.apple.security.device.audio-input": true,
-                "com.apple.security.device.camera": true,
-                "CFBundleIconName": "Icon"
-            },
-            "notarize": true
-        },
-        "dmg": {
-            "background": "build/background.tiff",
-            "icon": "build/icon.icns",
-            "iconSize": 105,
-            "window": {
-                "width": 512,
-                "height": 340
-            },
-            "contents": [
-                {
-                    "x": 140,
-                    "y": 160
-                },
-                {
-                    "x": 372,
-                    "y": 160,
-                    "type": "link",
-                    "path": "/Applications"
-                }
-            ]
-        },
-        "nsis": {
-            "include": "build/installer.nsh",
-            "oneClick": false
-        },
-        "win": {
-            "icon": "build/icon.ico",
-            "target": [
-                {
-                    "target": "nsis",
-                    "arch": [
-                        "x64",
-                        "arm64"
-                    ]
-                },
-                {
-                    "target": "zip",
-                    "arch": [
-                        "x64",
-                        "arm64"
-                    ]
-                }
-            ]
-        },
-        "rpm": {
-            "fpm": [
-                "--rpm-rpmbuild-define=_build_id_links none"
-            ]
-        },
-        "electronFuses": {
-            "runAsNode": false,
-            "enableCookieEncryption": false,
-            "enableNodeOptionsEnvironmentVariable": false,
-            "enableNodeCliInspectArguments": false,
-            "enableEmbeddedAsarIntegrityValidation": false,
-            "onlyLoadAppFromAsar": true,
-            "loadBrowserProcessSpecificV8Snapshot": false,
-            "grantFileProtocolExtraPrivileges": false
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "dir",
+          "arch": ["x64"]
         }
+      ]
     },
-    "trustedDependencies": [
-        "@vencord/venmic",
-        "electron",
-        "electron-winstaller",
-        "esbuild"
-    ]
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Network",
+      "target": ["dir"]
+    },
+    "mac": {
+      "icon": "build/icon.png",
+      "category": "public.app-category.social-networking",
+      "target": ["dir"]
+    }
+  }
 }

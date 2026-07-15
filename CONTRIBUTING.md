@@ -1,19 +1,12 @@
 # Contributing to PulseCord
 
-PulseCord is early. Start with a focused issue before building a large feature so architecture and safety expectations are clear.
+PulseCord is built as a clean-room project. Contributions must be authored for this repository and must not paste or mechanically translate source from another client modification.
 
-## Local workflow
+Before opening a change:
 
-```sh
-npm ci --ignore-scripts --legacy-peer-deps
-node node_modules/electron/install.js
-bun run compileArrpc
-bun run check
-bun run dev
-```
+1. Run `npm ci`.
+2. Run `npm run check`.
+3. Run `npm run build`.
+4. Describe any new plugin capability and its cleanup behavior.
 
-Keep pull requests small, explain user impact, and include a manual test note for UI or Discord-compatibility changes.
-
-Plugins must not automate user accounts, bypass access controls, expose hidden content, collect tokens, add undisclosed telemetry, or weaken Electron isolation. Sensitive capabilities must be declared and opt-in.
-
-All contributions are licensed under GPL-3.0-or-later and must preserve applicable upstream notices.
+Every plugin must stop cleanly: styles, observers, timers, DOM nodes, and listeners created by a plugin must be released when it is disabled. New privileged capabilities require a security review before they are exposed to third-party plugins.

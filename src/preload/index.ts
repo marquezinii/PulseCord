@@ -1,32 +1,35 @@
-/*
- * Vesktop, a desktop app aiming to give you a snappier Discord Experience
- * Copyright (c) 2023 Vendicated and Vencord contributors
- * SPDX-License-Identifier: GPL-3.0-or-later
- */
+import { contextBridge, ipcRenderer } from "electron";
 
-import { contextBridge, ipcRenderer, webFrame } from "electron/renderer";
+import { bootPulseCord } from "../renderer/bootstrap";
+import { IPC, type BuiltinPluginId, type NativeBridge } from "../shared/contracts";
 
-import { IpcEvents } from "../shared/IpcEvents";
-import { VesktopNative } from "./VesktopNative";
+const bridge: NativeBridge = Object.freeze({
+  getEnvironment: () => ipcRenderer.invoke(IPC.environment),
+  getSettings: () => ipcRenderer.invoke(IPC.settingsGet),
+  setPluginEnabled: (id: BuiltinPluginId, enabled: boolean) => ipcRenderer.invoke(IPC.pluginSetEnabled, id, enabled),
+  markWelcomeSeen: () => ipcRenderer.invoke(IPC.welcomeSeen),
+  openDataFolder: () => ipcRenderer.invoke(IPC.openDataFolder),
+  relaunch: (safeMode: boolean) => ipcRenderer.invoke(IPC.relaunch, safeMode)
+});
 
-contextBridge.exposeInMainWorld("VesktopNative", VesktopNative);
+contextBridge.exposeInMainWorld(
+  "PulseCord",
+  Object.freeze({
+    brand: "PulseCord" as const,
+    getEnvironment: bridge.getEnvironment
+  })
+);
 
-// TODO: remove this legacy workaround once some time has passed
-const isSandboxed = typeof __dirname === "undefined";
-if (isSandboxed) {
-    // While sandboxed, Electron "polyfills" these APIs as local variables.
-    // We have to pass them as arguments as they are not global
-    Function(
-        "require",
-        "Buffer",
-        "process",
-        "clearImmediate",
-        "setImmediate",
-        ipcRenderer.sendSync(IpcEvents.GET_VENCORD_PRELOAD_SCRIPT)
-    )(require, Buffer, process, clearImmediate, setImmediate);
-} else {
-    require(ipcRenderer.sendSync(IpcEvents.DEPRECATED_GET_VENCORD_PRELOAD_SCRIPT_PATH));
+function start(): void {
+  if (window.__pulseCordBooted) return;
+  window.__pulseCordBooted = true;
+  void bootPulseCord(bridge).catch((error: unknown) => {
+    console.error("[PulseCord] Failed to start the isolated renderer.", error);
+  });
 }
 
-webFrame.executeJavaScript(ipcRenderer.sendSync(IpcEvents.GET_VENCORD_RENDERER_SCRIPT));
-webFrame.executeJavaScript(ipcRenderer.sendSync(IpcEvents.GET_VESKTOP_RENDERER_SCRIPT));
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", start, { once: true });
+} else {
+  start();
+}

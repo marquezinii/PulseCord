@@ -1,26 +1,119 @@
-/*
- * Vesktop, a desktop app aiming to give you a snappier Discord Experience
- * Copyright (c) 2023 Vendicated and Vencord contributors
- * SPDX-License-Identifier: GPL-3.0-or-later
- */
+import { app, BrowserWindow, ipcMain, session, shell } from "electron";
 
-import { CommandLine, isQueryInstance } from "./cli";
+import { IPC, isBuiltinPluginId, type RuntimeEnvironment } from "../shared/contracts";
+import { RecoveryStore } from "./recovery-store";
+import { isTrustedIpcSender, configureSession } from "./security";
+import { SettingsStore } from "./settings-store";
+import { createMainWindow } from "./window";
 
-if (isQueryInstance) {
-    // Query-only instance, don't start the app
-} else if (CommandLine.values.repair) {
-    (async () => {
-        const { State } = await import("./settings");
-        if (State.store.equicordDir) {
-            console.error("Cannot repair: using custom Equicord directory.");
-            process.exit(1);
-        }
-        console.log("Repairing Equicord...");
-        const { downloadVencordAsar } = await import("./utils/vencordLoader");
-        await downloadVencordAsar();
-        console.log("Repair complete.");
-        process.exit(0);
-    })();
+const safeMode = process.argv.includes("--safe-mode");
+let mainWindow: BrowserWindow | undefined;
+
+app.setName("PulseCord");
+
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
+if (!hasSingleInstanceLock) {
+  app.quit();
 } else {
-    require("./startup");
+  app.on("second-instance", () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  });
+
+  app.whenReady().then(async () => {
+    const settings = new SettingsStore(app.getPath("userData"));
+    const recovery = new RecoveryStore(app.getPath("userData"));
+
+    registerIpc(settings);
+    configureSession(session.defaultSession);
+
+    const openWindow = (): void => {
+      if (mainWindow && !mainWindow.isDestroyed()) return;
+
+      mainWindow = createMainWindow({
+        onRendererCrash: (reason) => {
+          void handleRendererCrash(recovery, reason);
+        }
+      });
+
+      mainWindow.on("closed", () => {
+        mainWindow = undefined;
+      });
+
+      setTimeout(() => {
+        void recovery.markStable();
+      }, 60_000).unref();
+    };
+
+    openWindow();
+    app.on("activate", openWindow);
+  });
+
+  app.on("window-all-closed", () => {
+    if (process.platform !== "darwin") app.quit();
+  });
+}
+
+function registerIpc(settings: SettingsStore): void {
+  const senderUrl = (event: Electron.IpcMainInvokeEvent): string => {
+    return event.senderFrame?.url ?? event.sender.getURL();
+  };
+
+  const assertSender = (url: string): void => {
+    if (!isTrustedIpcSender(url)) throw new Error("PulseCord rejected IPC from an untrusted page.");
+  };
+
+  ipcMain.handle(IPC.environment, (event): RuntimeEnvironment => {
+    assertSender(senderUrl(event));
+    return {
+      appVersion: app.getVersion(),
+      platform: process.platform,
+      safeMode
+    };
+  });
+
+  ipcMain.handle(IPC.settingsGet, async (event) => {
+    assertSender(senderUrl(event));
+    return settings.get();
+  });
+
+  ipcMain.handle(IPC.pluginSetEnabled, async (event, id: unknown, enabled: unknown) => {
+    assertSender(senderUrl(event));
+    if (!isBuiltinPluginId(id) || typeof enabled !== "boolean") {
+      throw new TypeError("Invalid plugin settings update.");
+    }
+    return settings.setPluginEnabled(id, enabled);
+  });
+
+  ipcMain.handle(IPC.welcomeSeen, async (event) => {
+    assertSender(senderUrl(event));
+    return settings.markWelcomeSeen();
+  });
+
+  ipcMain.handle(IPC.openDataFolder, async (event) => {
+    assertSender(senderUrl(event));
+    const result = await shell.openPath(app.getPath("userData"));
+    if (result) throw new Error(result);
+  });
+
+  ipcMain.handle(IPC.relaunch, (event, requestedSafeMode: unknown) => {
+    assertSender(senderUrl(event));
+    if (typeof requestedSafeMode !== "boolean") throw new TypeError("Invalid relaunch mode.");
+    relaunch(requestedSafeMode);
+  });
+}
+
+async function handleRendererCrash(recovery: RecoveryStore, reason: string): Promise<void> {
+  console.error(`[PulseCord] Renderer stopped: ${reason}`);
+  const shouldUseSafeMode = await recovery.recordCrash();
+  if (shouldUseSafeMode && !safeMode) relaunch(true);
+}
+
+function relaunch(requestedSafeMode: boolean): void {
+  const args = process.argv.slice(1).filter((argument) => argument !== "--safe-mode");
+  if (requestedSafeMode) args.push("--safe-mode");
+  app.relaunch({ args });
+  app.exit(0);
 }

@@ -5,35 +5,33 @@ $workDir = Join-Path $repoRoot "work"
 $logFile = Join-Path $workDir "dev-launch.log"
 $stdoutLog = Join-Path $workDir "dev-launch.stdout.log"
 $stderrLog = Join-Path $workDir "dev-launch.stderr.log"
+$dependencyMarker = Join-Path $repoRoot "node_modules\.pulsecord-ready"
 
 New-Item -ItemType Directory -Path $workDir -Force | Out-Null
 Set-Location $repoRoot
 
 try {
-    "[$(Get-Date -Format o)] Starting PulseCord development build" | Set-Content $logFile
+    "[$(Get-Date -Format o)] Starting latest PulseCord workspace" | Set-Content $logFile
 
-    $bunCommand = Get-Command bun -ErrorAction SilentlyContinue
-    if (-not $bunCommand) {
-        $bunCommand = Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages" -Filter bun.exe -Recurse -ErrorAction SilentlyContinue |
-            Select-Object -First 1
+    $node = Get-Command node -ErrorAction Stop
+    $npm = Get-Command npm.cmd -ErrorAction Stop
+    "Node: $($node.Source)" | Add-Content $logFile
+
+    $needsInstall = -not (Test-Path (Join-Path $repoRoot "node_modules\electron\package.json")) -or -not (Test-Path $dependencyMarker)
+    if (-not $needsInstall) {
+        $markerTime = (Get-Item $dependencyMarker).LastWriteTimeUtc
+        $needsInstall = (Get-Item (Join-Path $repoRoot "package.json")).LastWriteTimeUtc -gt $markerTime -or
+            (Get-Item (Join-Path $repoRoot "package-lock.json")).LastWriteTimeUtc -gt $markerTime
     }
-    if (-not $bunCommand) { throw "Bun was not found. Install Bun 1.3 or newer before launching PulseCord." }
 
-    $bunPath = if ($bunCommand.Source) { $bunCommand.Source } else { $bunCommand.FullName }
-    $env:Path = "$(Split-Path $bunPath);$env:Path"
-
-    if (-not (Test-Path (Join-Path $repoRoot "node_modules"))) {
-        & npm ci --ignore-scripts --legacy-peer-deps *>> $logFile
+    if ($needsInstall) {
+        "Installing the clean-room dependency set" | Add-Content $logFile
+        & $npm.Source ci *>> $logFile
         if ($LASTEXITCODE -ne 0) { throw "Dependency installation failed with exit code $LASTEXITCODE." }
-
-        & node node_modules/electron/install.js *>> $logFile
-        if ($LASTEXITCODE -ne 0) { throw "Electron installation failed with exit code $LASTEXITCODE." }
-
-        & $bunPath scripts/build/compileArrpc.mts *>> $logFile
-        if ($LASTEXITCODE -ne 0) { throw "Rich Presence compilation failed with exit code $LASTEXITCODE." }
+        New-Item -ItemType File -Path $dependencyMarker -Force | Out-Null
     }
 
-    $pulseCord = Start-Process -FilePath $bunPath -ArgumentList "run", "start" -WorkingDirectory $repoRoot -Wait -PassThru `
+    $pulseCord = Start-Process -FilePath $npm.Source -ArgumentList "start" -WorkingDirectory $repoRoot -Wait -PassThru `
         -RedirectStandardOutput $stdoutLog -RedirectStandardError $stderrLog
     if ($pulseCord.ExitCode -ne 0) { throw "PulseCord exited with code $($pulseCord.ExitCode)." }
 } catch {

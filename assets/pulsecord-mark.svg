@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">PulseCord</title>
+  <desc id="desc">A restrained P monogram crossed by a pulse line.</desc>
+  <defs>
+    <linearGradient id="bg" x1="128" y1="80" x2="896" y2="944" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#232631"/>
+      <stop offset="1" stop-color="#0e1016"/>
+    </linearGradient>
+    <linearGradient id="pulse" x1="225" y1="560" x2="805" y2="560" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7c8499"/>
+      <stop offset="0.48" stop-color="#d43f55"/>
+      <stop offset="1" stop-color="#7c8499"/>
+    </linearGradient>
+  </defs>
+  <rect x="28" y="28" width="968" height="968" rx="224" fill="url(#bg)"/>
+  <rect x="29" y="29" width="966" height="966" rx="223" fill="none" stroke="#3b4050" stroke-width="2"/>
+  <path d="M318 770V254h238c136 0 226 76 226 193 0 119-90 197-226 197H438v126H318Zm120-230h108c71 0 112-31 112-91 0-57-41-87-112-87H438v178Z" fill="#f7f8fb"/>
+  <path d="M208 575h156l34-74 67 150 66-206 78 188 42-58h165" fill="none" stroke="url(#pulse)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
