@@ -4,6 +4,8 @@ import path from "node:path";
 import {
   type AppSettings,
   type BuiltinPluginId,
+  type ShortcutAccelerator,
+  type ShortcutAction,
   DEFAULT_SETTINGS,
   sanitizeSettings
 } from "../shared/contracts";
@@ -33,6 +35,12 @@ export class SettingsStore {
   async setPluginEnabled(id: BuiltinPluginId, enabled: boolean): Promise<AppSettings> {
     return this.#update((settings) => {
       settings.plugins[id] = enabled;
+    });
+  }
+
+  async setShortcut(action: ShortcutAction, accelerator: ShortcutAccelerator): Promise<AppSettings> {
+    return this.#update((settings) => {
+      settings.shortcuts[action] = accelerator;
     });
   }
 

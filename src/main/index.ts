@@ -1,10 +1,17 @@
 import { app, BrowserWindow, ipcMain, session, shell } from "electron";
 
-import { IPC, isBuiltinPluginId, type RuntimeEnvironment } from "../shared/contracts";
+import {
+  IPC,
+  isBuiltinPluginId,
+  isShortcutAccelerator,
+  isShortcutAction,
+  type RuntimeEnvironment
+} from "../shared/contracts";
 import { configureDesktopIdentity } from "./desktop-identity";
 import { RecoveryStore } from "./recovery-store";
 import { isTrustedIpcSender, configureSession } from "./security";
 import { SettingsStore } from "./settings-store";
+import { ShortcutManager } from "./shortcut-manager";
 import { disablePulseCordAutoStart } from "./startup";
 import { createMainWindow } from "./window";
 
@@ -28,9 +35,11 @@ if (!hasSingleInstanceLock) {
   app.whenReady().then(async () => {
     const settings = new SettingsStore(app.getPath("userData"));
     const recovery = new RecoveryStore(app.getPath("userData"));
+    const shortcuts = new ShortcutManager(() => mainWindow);
 
     await disablePulseCordAutoStart();
-    registerIpc(settings);
+    shortcuts.configure(await settings.get());
+    registerIpc(settings, shortcuts);
     configureSession(session.defaultSession);
     configureDesktopIdentity(session.defaultSession);
 
@@ -54,6 +63,7 @@ if (!hasSingleInstanceLock) {
 
     openWindow();
     app.on("activate", openWindow);
+    app.once("will-quit", () => shortcuts.dispose());
   });
 
   app.on("window-all-closed", () => {
@@ -61,7 +71,7 @@ if (!hasSingleInstanceLock) {
   });
 }
 
-function registerIpc(settings: SettingsStore): void {
+function registerIpc(settings: SettingsStore, shortcuts: ShortcutManager): void {
   const senderUrl = (event: Electron.IpcMainInvokeEvent): string => {
     return event.senderFrame?.url ?? event.sender.getURL();
   };
@@ -90,6 +100,23 @@ function registerIpc(settings: SettingsStore): void {
       throw new TypeError("Invalid plugin settings update.");
     }
     return settings.setPluginEnabled(id, enabled);
+  });
+
+  ipcMain.handle(IPC.shortcutSet, async (event, action: unknown, accelerator: unknown) => {
+    assertSender(senderUrl(event));
+    if (!isShortcutAction(action) || !isShortcutAccelerator(accelerator)) {
+      throw new TypeError("Invalid desktop shortcut update.");
+    }
+
+    const previous = shortcuts.get(action);
+    if (!shortcuts.update(action, accelerator)) throw new Error("That shortcut is unavailable.");
+
+    try {
+      return await settings.setShortcut(action, accelerator);
+    } catch (error) {
+      shortcuts.update(action, previous);
+      throw error;
+    }
   });
 
   ipcMain.handle(IPC.welcomeSeen, async (event) => {

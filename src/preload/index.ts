@@ -1,7 +1,14 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 import { bootPulseCord } from "../renderer/bootstrap";
-import { IPC, type BuiltinPluginId, type NativeBridge } from "../shared/contracts";
+import {
+  IPC,
+  isShortcutAction,
+  type BuiltinPluginId,
+  type NativeBridge,
+  type ShortcutAccelerator,
+  type ShortcutAction
+} from "../shared/contracts";
 import { installDesktopGatewayIdentity } from "./desktop-identity";
 
 installDesktopGatewayIdentity();
@@ -10,6 +17,15 @@ const bridge: NativeBridge = Object.freeze({
   getEnvironment: () => ipcRenderer.invoke(IPC.environment),
   getSettings: () => ipcRenderer.invoke(IPC.settingsGet),
   setPluginEnabled: (id: BuiltinPluginId, enabled: boolean) => ipcRenderer.invoke(IPC.pluginSetEnabled, id, enabled),
+  setShortcut: (action: ShortcutAction, accelerator: ShortcutAccelerator) =>
+    ipcRenderer.invoke(IPC.shortcutSet, action, accelerator),
+  onShortcutTriggered: (listener: (action: ShortcutAction) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, action: unknown): void => {
+      if (isShortcutAction(action)) listener(action);
+    };
+    ipcRenderer.on(IPC.shortcutTriggered, handler);
+    return () => ipcRenderer.removeListener(IPC.shortcutTriggered, handler);
+  },
   markWelcomeSeen: () => ipcRenderer.invoke(IPC.welcomeSeen),
   openDataFolder: () => ipcRenderer.invoke(IPC.openDataFolder),
   relaunch: (safeMode: boolean) => ipcRenderer.invoke(IPC.relaunch, safeMode)

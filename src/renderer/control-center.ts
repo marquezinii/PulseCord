@@ -1,7 +1,10 @@
 import discordSymbol from "../../assets/discord-symbol.svg";
+import { isShortcutAction } from "../shared/contracts";
 import type {
   AppSettings,
   BuiltinPluginId,
+  ShortcutAccelerator,
+  ShortcutAction,
   NativeBridge,
   RuntimeEnvironment
 } from "../shared/contracts";
@@ -47,7 +50,7 @@ export async function mountControlCenter(
       <button class="icon-button close" type="button" aria-label="Fechar">×</button>
     </header>
     <div class="service-badge">
-      <span class="discord-mark"><img src="${discordSymbol}" alt="" /></span>
+      <span class="discord-mark"><img src="${escapeAttribute(discordSymbol)}" alt="" /></span>
       <span><b>Discord</b><small>serviço conectado · projeto não oficial</small></span>
     </div>
     ${
@@ -60,6 +63,14 @@ export async function mountControlCenter(
       <h2>Seu cliente, do seu jeito.</h2>
       <p>Plugins próprios, sem telemetria e com desligamento limpo.</p>
     </div>
+    <section class="shortcuts" aria-labelledby="pulsecord-shortcuts-title">
+      <div class="section-heading">
+        <span><b id="pulsecord-shortcuts-title">Atalhos desktop</b><small>Motor nativo do PulseCore</small></span>
+        <em>LOCAL</em>
+      </div>
+      <div class="shortcut-list"></div>
+      <p>Clique em um atalho e pressione a nova combinação. Backspace remove.</p>
+    </section>
     <div class="plugins" role="list"></div>
     <footer>
       <button type="button" data-action="folder">Abrir dados locais</button>
@@ -69,6 +80,17 @@ export async function mountControlCenter(
   `;
 
   const pluginList = requireElement<HTMLDivElement>(panel, ".plugins");
+  const shortcutList = requireElement<HTMLDivElement>(panel, ".shortcut-list");
+  for (const action of SHORTCUT_ORDER) {
+    const row = document.createElement("div");
+    row.className = "shortcut";
+    row.innerHTML = `
+      <span><b>${SHORTCUT_LABELS[action]}</b><small>${SHORTCUT_DESCRIPTIONS[action]}</small></span>
+      <button type="button" data-shortcut="${action}" aria-label="Definir ${SHORTCUT_LABELS[action]}">${formatShortcut(settings.shortcuts[action])}</button>
+    `;
+    shortcutList.append(row);
+  }
+
   for (const definition of runtime.definitions) {
     const row = document.createElement("label");
     row.className = "plugin";
@@ -92,7 +114,14 @@ export async function mountControlCenter(
 
   const close = requireElement<HTMLButtonElement>(panel, ".close");
   const toast = requireElement<HTMLDivElement>(panel, ".toast");
+  let recordingAction: ShortcutAction | undefined;
   const showPanel = (show: boolean): void => {
+    if (!show && recordingAction) {
+      const button = requireElement<HTMLButtonElement>(shortcutList, `[data-shortcut="${recordingAction}"]`);
+      button.classList.remove("recording");
+      button.textContent = formatShortcut(settings.shortcuts[recordingAction]);
+      recordingAction = undefined;
+    }
     panel.hidden = !show;
     launcher.classList.toggle("active", show);
     if (show) close.focus();
@@ -102,10 +131,72 @@ export async function mountControlCenter(
   close.addEventListener("click", () => showPanel(false));
 
   document.addEventListener("keydown", (event) => {
+    if (recordingAction) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const action = recordingAction;
+      const button = requireElement<HTMLButtonElement>(shortcutList, `[data-shortcut="${action}"]`);
+      if (event.code === "Escape") {
+        recordingAction = undefined;
+        button.classList.remove("recording");
+        button.textContent = formatShortcut(settings.shortcuts[action]);
+        return;
+      }
+
+      const accelerator = isShortcutClearKey(event) ? null : keyboardAccelerator(event);
+      if (accelerator === undefined) {
+        showToast(toast, "Use uma combinação com Ctrl, Alt, Shift ou Super.");
+        return;
+      }
+
+      recordingAction = undefined;
+      button.classList.remove("recording");
+      button.disabled = true;
+      void bridge
+        .setShortcut(action, accelerator)
+        .then((updated) => {
+          settings.shortcuts = updated.shortcuts;
+          button.textContent = formatShortcut(updated.shortcuts[action]);
+          showToast(toast, accelerator ? "Atalho desktop salvo." : "Atalho removido.");
+        })
+        .catch((error: unknown) => {
+          button.textContent = formatShortcut(settings.shortcuts[action]);
+          showToast(toast, "Essa combinação não está disponível.");
+          console.error("[PulseCord] Desktop shortcut update failed.", error);
+        })
+        .finally(() => {
+          button.disabled = false;
+        });
+      return;
+    }
+
     if (event.ctrlKey && event.shiftKey && event.code === "Comma") {
       event.preventDefault();
       showPanel(panel.hidden !== false);
     }
+  });
+
+  shortcutList.addEventListener("click", (event) => {
+    if (!(event.target instanceof Element)) return;
+    const button = event.target.closest<HTMLButtonElement>("button[data-shortcut]");
+    const action = button?.dataset.shortcut;
+    if (!button || !isShortcutAction(action)) return;
+
+    if (recordingAction) {
+      const previous = requireElement<HTMLButtonElement>(shortcutList, `[data-shortcut="${recordingAction}"]`);
+      previous.classList.remove("recording");
+      previous.textContent = formatShortcut(settings.shortcuts[recordingAction]);
+    }
+
+    recordingAction = action;
+    button.classList.add("recording");
+    button.textContent = "Pressione...";
+    button.focus();
+  });
+
+  bridge.onShortcutTriggered((action) => {
+    if (action === "toggle-panel") showPanel(panel.hidden !== false);
   });
 
   pluginList.addEventListener("change", async (event) => {
@@ -156,6 +247,82 @@ function showToast(element: HTMLElement, message: string): void {
   window.setTimeout(() => element.classList.remove("visible"), 1800);
 }
 
+const SHORTCUT_ORDER = ["toggle-panel", "toggle-mute", "toggle-deafen"] as const satisfies readonly ShortcutAction[];
+const SHORTCUT_LABELS: Record<ShortcutAction, string> = {
+  "toggle-panel": "Abrir PulsePanel",
+  "toggle-mute": "Silenciar microfone",
+  "toggle-deafen": "Silenciar áudio"
+};
+const SHORTCUT_DESCRIPTIONS: Record<ShortcutAction, string> = {
+  "toggle-panel": "Mostra ou esconde os controles do PulseCord.",
+  "toggle-mute": "Alterna o microfone mesmo fora da janela.",
+  "toggle-deafen": "Alterna o áudio recebido mesmo fora da janela."
+};
+
+function formatShortcut(accelerator: ShortcutAccelerator): string {
+  return (
+    accelerator
+      ?.replaceAll("CommandOrControl", "Cmd/Ctrl")
+      .replaceAll("Control", "Ctrl")
+      .replaceAll("Super", "Win") ?? "Definir"
+  );
+}
+
+function hasModifier(event: KeyboardEvent): boolean {
+  return event.ctrlKey || event.altKey || event.shiftKey || event.metaKey;
+}
+
+function isShortcutClearKey(event: KeyboardEvent): boolean {
+  return !hasModifier(event) && /^(?:backspace|delete)$/i.test(event.code || event.key);
+}
+
+function keyboardAccelerator(event: KeyboardEvent): ShortcutAccelerator | undefined {
+  if (!hasModifier(event)) return undefined;
+
+  const modifiers: string[] = [];
+  if (event.ctrlKey) modifiers.push("Control");
+  if (event.altKey) modifiers.push("Alt");
+  if (event.shiftKey) modifiers.push("Shift");
+  if (event.metaKey) modifiers.push("Super");
+
+  const key = acceleratorKey(event.code);
+  if (!key) return undefined;
+  return `${modifiers.join("+")}+${key}`;
+}
+
+function acceleratorKey(code: string): string | undefined {
+  if (/^Key[A-Z]$/.test(code)) return code.slice(3);
+  if (/^Digit[0-9]$/.test(code)) return code.slice(5);
+  if (/^F(?:[1-9]|1[0-9]|2[0-4])$/.test(code)) return code;
+
+  return {
+    ArrowUp: "Up",
+    ArrowDown: "Down",
+    ArrowLeft: "Left",
+    ArrowRight: "Right",
+    Space: "Space",
+    Enter: "Return",
+    Tab: "Tab",
+    Home: "Home",
+    End: "End",
+    PageUp: "PageUp",
+    PageDown: "PageDown",
+    Insert: "Insert",
+    Delete: "Delete",
+    Comma: ",",
+    Period: ".",
+    Slash: "/",
+    Semicolon: ";",
+    Quote: "'",
+    BracketLeft: "[",
+    BracketRight: "]",
+    Backslash: "\\",
+    Backquote: "`",
+    Minus: "-",
+    Equal: "="
+  }[code];
+}
+
 function capabilityLabel(capability: string): string {
   return { dom: "interface", keyboard: "teclado", styles: "estilos" }[capability] ?? capability;
 }
@@ -164,6 +331,14 @@ function escapeHtml(value: string): string {
   const span = document.createElement("span");
   span.textContent = value;
   return span.innerHTML;
+}
+
+function escapeAttribute(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }
 
 const CONTROL_CENTER_CSS = `
@@ -205,6 +380,22 @@ const CONTROL_CENTER_CSS = `
   .eyebrow { color: #d86a7b; font-size: 10px; font-weight: 800; letter-spacing: .16em; }
   h2 { margin: 6px 0 4px; font-size: 23px; letter-spacing: -.035em; }
   .intro p { margin: 0; color: #a7adba; font-size: 12px; line-height: 1.45; }
+  .shortcuts { margin: 0 12px 14px; padding: 12px; border: 1px solid rgba(212,63,85,.18); border-radius: 16px; background: rgba(212,63,85,.045); }
+  .section-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .section-heading > span { display: grid; gap: 2px; }
+  .section-heading b { font-size: 12px; }
+  .section-heading small { color: #8f96a5; font-size: 9.5px; }
+  .section-heading em { color: #d86a7b; font-size: 8px; font-style: normal; font-weight: 900; letter-spacing: .14em; }
+  .shortcut-list { display: grid; gap: 6px; }
+  .shortcut { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid rgba(255,255,255,.055); }
+  .shortcut:first-child { border-top: 0; }
+  .shortcut > span { flex: 1; min-width: 0; display: grid; gap: 2px; }
+  .shortcut b { font-size: 10.5px; }
+  .shortcut small { color: #858c9b; font-size: 8.5px; line-height: 1.3; }
+  .shortcut button { min-width: 86px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; padding: 7px 8px; background: rgba(255,255,255,.055); color: #d9dce3; font-size: 9px; cursor: pointer; }
+  .shortcut button:hover { border-color: rgba(212,63,85,.5); }
+  .shortcut button.recording { border-color: #d43f55; color: white; background: rgba(212,63,85,.16); }
+  .shortcuts > p { margin: 8px 0 0; color: #747c8c; font-size: 8.5px; line-height: 1.35; }
   .plugins { display: grid; gap: 8px; padding: 0 12px 14px; }
   .plugin { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid rgba(255,255,255,.075); border-radius: 15px; background: rgba(255,255,255,.035); cursor: pointer; }
   .plugin:hover { border-color: rgba(255,255,255,.14); background: rgba(255,255,255,.052); }

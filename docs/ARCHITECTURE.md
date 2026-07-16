@@ -10,6 +10,8 @@ The main window loads only the official Discord web application. External naviga
 
 Desktop identity belongs to PulseCord itself. The shell classifies its Discord API and Gateway session as desktop while keeping the `PulseCord/<version>` user agent. It does not expose or imitate another desktop client's private native bridge.
 
+PulseCord also owns its desktop shortcut engine. Electron registers only accelerators explicitly chosen by the user, PulseCore stores them in the versioned local settings schema, and a narrow IPC channel dispatches the supported first-party actions. Discord's private keybind implementation is not loaded or imitated.
+
 ## Preload bridge
 
 The preload bundle runs in Electron's isolated world. It exposes only the PulseCord brand and a read-only environment query to the page's main JavaScript world. PulseCore itself stays inside the isolated world and talks to the main process through a private bridge.
