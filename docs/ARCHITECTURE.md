@@ -8,6 +8,8 @@ The main process owns the window, local settings, recovery records, permissions,
 
 The main window loads only the official Discord web application. External navigation is opened in the system browser. Webviews are blocked, Node integration is disabled, context isolation is enabled, and the renderer is sandboxed.
 
+Desktop identity belongs to PulseCord itself. The shell classifies its Discord API and Gateway session as desktop while keeping the `PulseCord/<version>` user agent. It does not expose or imitate another desktop client's private native bridge.
+
 ## Preload bridge
 
 The preload bundle runs in Electron's isolated world. It exposes only the PulseCord brand and a read-only environment query to the page's main JavaScript world. PulseCore itself stays inside the isolated world and talks to the main process through a private bridge.

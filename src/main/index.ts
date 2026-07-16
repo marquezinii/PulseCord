@@ -1,15 +1,18 @@
 import { app, BrowserWindow, ipcMain, session, shell } from "electron";
 
 import { IPC, isBuiltinPluginId, type RuntimeEnvironment } from "../shared/contracts";
+import { configureDesktopIdentity } from "./desktop-identity";
 import { RecoveryStore } from "./recovery-store";
 import { isTrustedIpcSender, configureSession } from "./security";
 import { SettingsStore } from "./settings-store";
+import { disablePulseCordAutoStart } from "./startup";
 import { createMainWindow } from "./window";
 
 const safeMode = process.argv.includes("--safe-mode");
 let mainWindow: BrowserWindow | undefined;
 
 app.setName("PulseCord");
+if (process.platform === "win32") app.setAppUserModelId("app.pulsecord.desktop");
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 if (!hasSingleInstanceLock) {
@@ -26,8 +29,10 @@ if (!hasSingleInstanceLock) {
     const settings = new SettingsStore(app.getPath("userData"));
     const recovery = new RecoveryStore(app.getPath("userData"));
 
+    await disablePulseCordAutoStart();
     registerIpc(settings);
     configureSession(session.defaultSession);
+    configureDesktopIdentity(session.defaultSession);
 
     const openWindow = (): void => {
       if (mainWindow && !mainWindow.isDestroyed()) return;

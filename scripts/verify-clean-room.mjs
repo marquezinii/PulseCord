@@ -7,13 +7,24 @@ const forbiddenFragments = [
   ["v", "e", "s", "k", "t", "o", "p"].join(""),
   ["v", "e", "n", "c", "o", "r", "d"].join(""),
   ["e", "q", "u", "i", "b", "o", "p"].join(""),
-  ["e", "q", "u", "i", "c", "o", "r", "d"].join("")
+  ["e", "q", "u", "i", "c", "o", "r", "d"].join(""),
+  ["b", "e", "t", "t", "e", "r", "d", "i", "s", "c", "o", "r", "d"].join(""),
+  ["p", "o", "w", "e", "r", "c", "o", "r", "d"].join(""),
+  ["r", "e", "p", "l", "u", "g", "g", "e", "d"].join(""),
+  ["a", "r", "m", "c", "o", "r", "d"].join(""),
+  ["w", "e", "b", "c", "o", "r", "d"].join("")
 ];
 const targets = ["src", "package.json", "package-lock.json", "scripts/build.mjs"];
 const violations = [];
 
 for (const target of targets) {
   await scan(path.join(root, target));
+}
+
+const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+const productionDependencies = Object.keys(packageJson.dependencies ?? {});
+if (productionDependencies.length > 0) {
+  violations.push(`package.json contains production dependencies: ${productionDependencies.join(", ")}`);
 }
 
 if (violations.length > 0) {

@@ -4,6 +4,8 @@ PulseCord is an independent, open-source desktop shell for Discord with its own 
 
 This repository is a clean-room implementation. The current runtime does not import, bundle, download, or execute the codebase of another Discord client modification. Its only application dependency at runtime is Electron; the Discord experience itself is loaded from `https://discord.com/app`.
 
+The permanent clean-room boundary and its exception process are defined in [`docs/CLEAN_ROOM_POLICY.md`](docs/CLEAN_ROOM_POLICY.md).
+
 > PulseCord is an unofficial community project. It is not created, sponsored, or endorsed by Discord Inc. Discord and its brand assets belong to Discord Inc.
 
 ## Current milestone

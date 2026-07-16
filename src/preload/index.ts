@@ -2,6 +2,9 @@ import { contextBridge, ipcRenderer } from "electron";
 
 import { bootPulseCord } from "../renderer/bootstrap";
 import { IPC, type BuiltinPluginId, type NativeBridge } from "../shared/contracts";
+import { installDesktopGatewayIdentity } from "./desktop-identity";
+
+installDesktopGatewayIdentity();
 
 const bridge: NativeBridge = Object.freeze({
   getEnvironment: () => ipcRenderer.invoke(IPC.environment),

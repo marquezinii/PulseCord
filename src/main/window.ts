@@ -38,6 +38,16 @@ export function createMainWindow({ onRendererCrash }: WindowOptions): BrowserWin
   Menu.setApplicationMenu(null);
   hardenWindow(window);
 
+  const repairInvalidZoom = (): void => {
+    const zoomFactor = window.webContents.getZoomFactor();
+    if (!Number.isFinite(zoomFactor) || zoomFactor < 0.5 || zoomFactor > 2) {
+      window.webContents.setZoomFactor(1);
+    }
+  };
+
+  repairInvalidZoom();
+  window.webContents.on("did-finish-load", repairInvalidZoom);
+
   window.once("ready-to-show", () => window.show());
   window.webContents.on("page-title-updated", (event) => {
     event.preventDefault();
