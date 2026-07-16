@@ -31,9 +31,30 @@ try {
         New-Item -ItemType File -Path $dependencyMarker -Force | Out-Null
     }
 
-    $pulseCord = Start-Process -FilePath $npm.Source -ArgumentList "start" -WorkingDirectory $repoRoot -Wait -PassThru `
+    $pulseCord = Start-Process -FilePath $npm.Source -ArgumentList "start" -WorkingDirectory $repoRoot -PassThru `
         -RedirectStandardOutput $stdoutLog -RedirectStandardError $stderrLog
-    if ($pulseCord.ExitCode -ne 0) { throw "PulseCord exited with code $($pulseCord.ExitCode)." }
+    $electronPath = (Resolve-Path (Join-Path $repoRoot "node_modules\electron\dist\electron.exe")).Path
+    $startupDeadline = (Get-Date).AddSeconds(90)
+    $visibleWindow = $null
+
+    do {
+        Start-Sleep -Milliseconds 250
+        $pulseCord.Refresh()
+        $visibleWindow = Get-Process electron -ErrorAction SilentlyContinue |
+            Where-Object { $_.Path -eq $electronPath -and $_.MainWindowTitle -eq "PulseCord" } |
+            Select-Object -First 1
+    } while (-not $visibleWindow -and -not $pulseCord.HasExited -and (Get-Date) -lt $startupDeadline)
+
+    if (-not $visibleWindow) {
+        if ($pulseCord.HasExited) {
+            throw "PulseCord did not open a window. Launcher exit code: $($pulseCord.ExitCode)."
+        }
+        throw "PulseCord did not open a visible window within 90 seconds."
+    }
+
+    "PulseCord window opened (PID $($visibleWindow.Id))" | Add-Content $logFile
+    $pulseCord.WaitForExit()
+    "PulseCord session ended after a successful launch" | Add-Content $logFile
 } catch {
     $_ | Out-String | Add-Content $logFile
     Add-Type -AssemblyName PresentationFramework
