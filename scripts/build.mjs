@@ -38,9 +38,13 @@ await Promise.all([
     platform: "node",
     format: "cjs",
     target: "chrome140",
-    loader: { ".svg": "dataurl" }
+    loader: {
+      ".png": "dataurl",
+      ".svg": "dataurl"
+    }
   })
 ]);
 
 await cp(path.join(root, "static/offline.html"), path.join(dist, "offline.html"));
+await cp(path.join(root, "assets/pulsecord-logo.png"), path.join(dist, "pulsecord-logo.png"));
 console.log(`PulseCord ${packageJson.version} built from the clean-room source tree.`);

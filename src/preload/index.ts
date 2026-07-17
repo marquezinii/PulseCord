@@ -5,6 +5,7 @@ import {
   IPC,
   isShortcutAction,
   type BuiltinPluginId,
+  type HomeIconPreference,
   type NativeBridge,
   type ShortcutAccelerator,
   type ShortcutAction
@@ -17,6 +18,12 @@ const bridge: NativeBridge = Object.freeze({
   getEnvironment: () => ipcRenderer.invoke(IPC.environment),
   getSettings: () => ipcRenderer.invoke(IPC.settingsGet),
   setPluginEnabled: (id: BuiltinPluginId, enabled: boolean) => ipcRenderer.invoke(IPC.pluginSetEnabled, id, enabled),
+  createShortcut: (action: ShortcutAction, accelerator: string) =>
+    ipcRenderer.invoke(IPC.shortcutCreate, action, accelerator),
+  updateShortcut: (id: string, action: ShortcutAction, accelerator: string) =>
+    ipcRenderer.invoke(IPC.shortcutUpdate, id, action, accelerator),
+  removeShortcut: (id: string) => ipcRenderer.invoke(IPC.shortcutRemove, id),
+  getShortcutRegistrations: () => ipcRenderer.invoke(IPC.shortcutRegistrationsGet),
   setShortcut: (action: ShortcutAction, accelerator: ShortcutAccelerator) =>
     ipcRenderer.invoke(IPC.shortcutSet, action, accelerator),
   onShortcutTriggered: (listener: (action: ShortcutAction) => void) => {
@@ -26,6 +33,8 @@ const bridge: NativeBridge = Object.freeze({
     ipcRenderer.on(IPC.shortcutTriggered, handler);
     return () => ipcRenderer.removeListener(IPC.shortcutTriggered, handler);
   },
+  setTheme: (customCss: string, enabled: boolean) => ipcRenderer.invoke(IPC.themeSet, customCss, enabled),
+  setHomeIcon: (preference: HomeIconPreference) => ipcRenderer.invoke(IPC.homeIconSet, preference),
   markWelcomeSeen: () => ipcRenderer.invoke(IPC.welcomeSeen),
   openDataFolder: () => ipcRenderer.invoke(IPC.openDataFolder),
   relaunch: (safeMode: boolean) => ipcRenderer.invoke(IPC.relaunch, safeMode)

@@ -13,9 +13,12 @@ The permanent clean-room boundary and its exception process are defined in [`doc
 - Secure Electron shell with context isolation and sandboxing.
 - Login directly on the official Discord web origin. PulseCord never asks for or stores a Discord password.
 - PulseCore, our capability-based lifecycle for first-party plugins.
-- Four original built-in plugins: Pulse Theme, Focus Mode, Compact Layout, and Reduced Motion.
+- A dedicated PulseCord settings category with Plugins, Themes, and PulseCord Shortcuts pages.
+- A CSS theme editor with local preview, explicit saving, remote-resource blocking, and safe-mode recovery.
+- First-party global shortcuts with create, edit, and remove flows above Discord's unchanged standard-shortcut list.
+- A deliberately empty Plugins page while the external plugin security model is still being designed.
 - PulsePanel, a Shadow DOM control center that does not depend on Discord's private module system.
-- First-party global shortcuts managed from an original PulseCord page inside Discord's settings shell.
+- The official PulseCord artwork on the desktop shell, PulsePanel, and Home button by default, with a free option to follow Discord's selected Home icon.
 - Atomic local settings, safe mode, renderer crash recovery, and an offline screen.
 - A silent development shortcut that rebuilds the latest workspace before every launch without leaving terminal processes open.
 
@@ -42,9 +45,9 @@ The shortcut points to `scripts/dev-launch.ps1`, not to a frozen executable. Eve
 
 ## Project map
 
-- `src/main` — application lifecycle, secure window, IPC, persistence, and recovery.
+- `src/main` — application lifecycle, secure window, IPC, persistence, shortcuts, and recovery.
 - `src/preload` — the narrow bridge between Electron and PulseCore.
-- `src/renderer` — PulseCore, built-in plugins, and PulsePanel.
+- `src/renderer` — settings integration, shortcut and theme editors, branding, PulseCore, and PulsePanel.
 - `src/shared` — versioned contracts shared by the processes.
 - `docs` — architecture, plugin API, security model, and roadmap.
 
@@ -54,8 +57,8 @@ The shortcut points to `scripts/dev-launch.ps1`, not to a frozen executable. Eve
 - `npm run build` — creates local application bundles in `dist/`.
 - `npm start` — builds and opens the development client.
 - `npm run package:dir` — creates an unpacked local build; it does not publish a release.
-- `npm run safe-mode` — opens PulseCord with all optional plugins disabled.
+- `npm run safe-mode` — opens PulseCord without the optional custom theme.
 
 ## License
 
-PulseCord source code is licensed under GPL-3.0-or-later. The unmodified Discord symbol used only for service attribution is excluded from that license and remains property of Discord Inc.; see `BRAND_ASSETS.md`.
+PulseCord source code is licensed under GPL-3.0-or-later. The official PulseCord artwork and generated package icons use the project-supplied source in `assets/pulsecord-logo.png`. The unmodified Discord symbol used only for service attribution is excluded from that license and remains property of Discord Inc.; see `BRAND_ASSETS.md`.

@@ -1,6 +1,6 @@
 # PulseCore plugin API
 
-The current API is private to first-party, compiled plugins. This document defines the boundary that future external plugins will build on without granting them unrestricted page or Node.js access.
+The current API is private to first-party, compiled plugins. The lifecycle runtime exists, but PulseCord 0.2 deliberately registers no built-in plugins and its Plugins page remains in construction while the security model is reviewed. This document defines the boundary that future external plugins will build on without granting them unrestricted page or Node.js access.
 
 ```ts
 interface PluginDefinition {

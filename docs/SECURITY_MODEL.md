@@ -20,10 +20,14 @@ First-party plugins are trusted source code reviewed in this repository, but Pul
 - Webview blocking.
 - Sandboxed renderer with context isolation and no Node integration.
 - Minimal, sender-validated IPC.
-- Settings schema sanitization and atomic writes.
+- Settings schema sanitization, serialized mutations, and atomic writes.
+- Shortcut actions are allowlisted, validated, deduplicated, and capped at 64 bindings.
+- Custom CSS is capped at 128 KiB and rejects `@import`, HTTP(S), protocol-relative URLs, and other remote resources. Only `data:`, `blob:`, and local fragments are accepted in `url()`.
+- Safe mode never applies the custom CSS theme.
+- The Home-icon preference is restricted to the `pulsecord | discord` enum.
 - No remote plugin download, updater, token access, or telemetry.
 - Safe mode after repeated renderer failures.
 
 ## Known limitations
 
-PulseCord renders a service that changes independently. CSS selectors used by visual plugins may stop matching and must fail harmlessly. Screen sharing still depends on Electron and operating-system behavior and needs dedicated cross-platform work. The current plugin system is not a security boundary for third-party code, which is why third-party loading is disabled.
+PulseCord renders a service that changes independently. Integration selectors can stop matching and must fail harmlessly. User-authored local CSS can still hide or imitate interface elements even though it cannot fetch remote resources; safe mode is the recovery path. Screen sharing still depends on Electron and operating-system behavior and needs dedicated cross-platform work. The current plugin system is not a security boundary for third-party code, which is why third-party loading is disabled.

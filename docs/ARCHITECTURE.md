@@ -4,13 +4,15 @@ PulseCord 0.2 is deliberately small. The system is split across Electron's trust
 
 ## Main process
 
-The main process owns the window, local settings, recovery records, permissions, navigation, and operating-system actions. It exposes six narrow IPC operations. Every request validates the sender URL and every mutable argument.
+The main process owns the window, local settings, recovery records, permissions, navigation, and operating-system actions. It exposes a versioned allowlist of narrow IPC operations plus a one-way shortcut event. Every request validates the sender URL and every mutable argument.
 
 The main window loads only the official Discord web application. External navigation is opened in the system browser. Webviews are blocked, Node integration is disabled, context isolation is enabled, and the renderer is sandboxed.
 
 Desktop identity belongs to PulseCord itself. The shell classifies its Discord API and Gateway session as desktop while keeping the `PulseCord/<version>` user agent. It does not expose or imitate another desktop client's private native bridge.
 
-PulseCord also owns its desktop shortcut engine. Electron registers only accelerators explicitly chosen by the user, PulseCore stores them in the versioned local settings schema, and a narrow IPC channel dispatches the supported first-party actions. Discord's private keybind implementation is not loaded or imitated.
+PulseCord also owns its desktop shortcut engine. Electron registers only accelerators explicitly chosen by the user, `SettingsStore` persists them in the versioned local settings schema, and a narrow IPC channel dispatches only allowlisted first-party actions. Discord's private keybind implementation is not loaded or imitated.
+
+Schema version 3 stores shortcut bindings by ID, the local CSS theme, and the Home-icon preference. Shortcut combinations and actions are unique, and the store accepts at most 64 bindings.
 
 ## Preload bridge
 
@@ -24,13 +26,23 @@ PulseCore is the first-party plugin lifecycle. A plugin declares an ID, version,
 
 Every resource registered through the context receives a cleanup function. Disabling a plugin reverses its cleanup stack, so experiments do not leave stale styles or observers behind.
 
-The first milestone compiles plugins into the preload bundle. Loading arbitrary local or remote JavaScript is intentionally unsupported until manifest validation, permissions, signatures, and crash isolation are implemented.
+The first milestone compiles plugins into the preload bundle. Loading arbitrary local or remote JavaScript is intentionally unsupported until manifest validation, permissions, signatures, and crash isolation are implemented. PulseCord 0.2 deliberately registers no built-in plugins.
 
-## PulsePanel
+## PulsePanel and settings integration
 
-PulsePanel is mounted in a closed Shadow DOM root. It is independent of the page's component tree and private module loader. Discord interface changes can still affect individual CSS plugins, but they do not remove the PulseCord settings panel or corrupt the core runtime.
+PulsePanel is mounted in a closed Shadow DOM root. It is independent of the page's component tree and private module loader. PulsePanel is the quick control surface, while detailed configuration lives in a dedicated PulseCord category inside Discord's visible settings shell.
 
-PulsePanel is the quick control surface, while full shortcut editing lives in a first-party PulseCord page inserted into Discord's visible settings shell. The integration clones only the current native navigation item's presentation at runtime and mounts original PulseCord markup, styles, and behavior. It does not import Discord modules or another modified client's code. A compatibility observer remounts the entry when Discord recreates the settings modal, and PulsePanel remains available if that optional integration ever needs adapting.
+The category contains Plugins, Themes, and PulseCord Shortcuts. When a native System shortcut page is available, the PulseCord entry routes to that already-rendered page and hides the duplicate System navigation item. This preserves Discord's unchanged standard-shortcut list and keycaps while mounting original PulseCord editor markup and behavior above it. No private Discord module or modified-client code is imported.
+
+A compatibility observer remounts the category when Discord recreates the settings modal, and PulsePanel remains available if that optional integration needs adapting.
+
+## Custom themes
+
+The Themes page provides an original CSS editor with local preview and explicit persistence. Saved CSS is applied through one PulseCord-owned `<style>` element and is removed when disabled. Safe mode never applies the custom theme. The main-process contract rejects oversized CSS, imports, and remote resource URLs before writing settings.
+
+## Branding and appearance
+
+The project-supplied artwork is the PulseCord desktop and in-app identity. A reversible overlay replaces only the visual content of Discord's Home button and preserves the original interactive element. The Appearance integration offers `PulseCord` and `Follow Discord`; Discord's existing Nitro icon grid remains untouched and continues to be managed by Discord.
 
 ## Development launcher
 
@@ -38,4 +50,4 @@ The Windows desktop shortcut starts a hidden PowerShell bootstrapper. That boots
 
 ## Persistence and recovery
 
-Settings are sanitized against a versioned schema and written atomically inside Electron's user-data directory. Two renderer failures within two minutes trigger a relaunch in safe mode. After one stable minute, the crash counter resets.
+Settings are sanitized against a versioned schema, serialized through a transaction queue, and written atomically inside Electron's user-data directory. Two renderer failures within two minutes trigger a relaunch in safe mode. After one stable minute, the crash counter resets.

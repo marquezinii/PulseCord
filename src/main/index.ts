@@ -1,10 +1,19 @@
+import { randomUUID } from "node:crypto";
+
 import { app, BrowserWindow, ipcMain, session, shell } from "electron";
 
 import {
   IPC,
   isBuiltinPluginId,
+  isCustomCss,
+  isHomeIconPreference,
   isShortcutAccelerator,
   isShortcutAction,
+  isShortcutBindingId,
+  isStoredShortcutAccelerator,
+  type AppSettings,
+  type ShortcutAction,
+  type ShortcutBinding,
   type RuntimeEnvironment
 } from "../shared/contracts";
 import { configureDesktopIdentity } from "./desktop-identity";
@@ -38,7 +47,10 @@ if (!hasSingleInstanceLock) {
     const shortcuts = new ShortcutManager(() => mainWindow);
 
     await disablePulseCordAutoStart();
-    shortcuts.configure(await settings.get());
+    const unavailableShortcuts = shortcuts.configure(await settings.get());
+    if (unavailableShortcuts.length > 0) {
+      console.warn(`[PulseCord] ${unavailableShortcuts.length} saved shortcut(s) could not be registered.`);
+    }
     registerIpc(settings, shortcuts);
     configureSession(session.defaultSession);
     configureDesktopIdentity(session.defaultSession);
@@ -102,21 +114,65 @@ function registerIpc(settings: SettingsStore, shortcuts: ShortcutManager): void 
     return settings.setPluginEnabled(id, enabled);
   });
 
+  ipcMain.handle(IPC.shortcutCreate, async (event, action: unknown, accelerator: unknown) => {
+    assertSender(senderUrl(event));
+    if (!isShortcutAction(action) || !isStoredShortcutAccelerator(accelerator)) {
+      throw new TypeError("Invalid desktop shortcut update.");
+    }
+    return createShortcut(settings, shortcuts, action, accelerator);
+  });
+
+  ipcMain.handle(
+    IPC.shortcutUpdate,
+    async (event, id: unknown, action: unknown, accelerator: unknown) => {
+      assertSender(senderUrl(event));
+      if (!isShortcutBindingId(id) || !isShortcutAction(action) || !isStoredShortcutAccelerator(accelerator)) {
+        throw new TypeError("Invalid desktop shortcut update.");
+      }
+      return updateShortcut(settings, shortcuts, id, action, accelerator);
+    }
+  );
+
+  ipcMain.handle(IPC.shortcutRemove, async (event, id: unknown) => {
+    assertSender(senderUrl(event));
+    if (!isShortcutBindingId(id)) throw new TypeError("Invalid desktop shortcut removal.");
+    return removeShortcut(settings, shortcuts, id);
+  });
+
+  ipcMain.handle(IPC.shortcutRegistrationsGet, (event) => {
+    assertSender(senderUrl(event));
+    return shortcuts.getRegisteredIds();
+  });
+
+  // Compatibility for development builds created before binding IDs were introduced.
   ipcMain.handle(IPC.shortcutSet, async (event, action: unknown, accelerator: unknown) => {
     assertSender(senderUrl(event));
     if (!isShortcutAction(action) || !isShortcutAccelerator(accelerator)) {
       throw new TypeError("Invalid desktop shortcut update.");
     }
 
-    const previous = shortcuts.get(action);
-    if (!shortcuts.update(action, accelerator)) throw new Error("That shortcut is unavailable.");
-
-    try {
-      return await settings.setShortcut(action, accelerator);
-    } catch (error) {
-      shortcuts.update(action, previous);
-      throw error;
+    const current = await settings.get();
+    const existing = current.shortcuts.bindings.find((binding) => binding.action === action);
+    if (accelerator === null) {
+      return existing ? removeShortcut(settings, shortcuts, existing.id) : current;
     }
+    return existing
+      ? updateShortcut(settings, shortcuts, existing.id, action, accelerator)
+      : createShortcut(settings, shortcuts, action, accelerator);
+  });
+
+  ipcMain.handle(IPC.themeSet, async (event, customCss: unknown, enabled: unknown) => {
+    assertSender(senderUrl(event));
+    if (!isCustomCss(customCss) || typeof enabled !== "boolean") {
+      throw new TypeError("Invalid custom theme update.");
+    }
+    return settings.setTheme(customCss, enabled);
+  });
+
+  ipcMain.handle(IPC.homeIconSet, async (event, preference: unknown) => {
+    assertSender(senderUrl(event));
+    if (!isHomeIconPreference(preference)) throw new TypeError("Invalid home icon preference.");
+    return settings.setHomeIcon(preference);
   });
 
   ipcMain.handle(IPC.welcomeSeen, async (event) => {
@@ -135,6 +191,68 @@ function registerIpc(settings: SettingsStore, shortcuts: ShortcutManager): void 
     if (typeof requestedSafeMode !== "boolean") throw new TypeError("Invalid relaunch mode.");
     relaunch(requestedSafeMode);
   });
+}
+
+async function createShortcut(
+  settings: SettingsStore,
+  shortcuts: ShortcutManager,
+  action: ShortcutAction,
+  accelerator: string
+): Promise<AppSettings> {
+  const binding: ShortcutBinding = { id: randomUUID(), action, accelerator };
+  if (!shortcuts.create(binding)) throw new Error("That shortcut is unavailable or already in use.");
+
+  try {
+    return await settings.createShortcut(binding);
+  } catch (error) {
+    shortcuts.remove(binding.id);
+    throw error;
+  }
+}
+
+async function updateShortcut(
+  settings: SettingsStore,
+  shortcuts: ShortcutManager,
+  id: string,
+  action: ShortcutAction,
+  accelerator: string
+): Promise<AppSettings> {
+  const current = await settings.get();
+  const previous = current.shortcuts.bindings.find((binding) => binding.id === id);
+  if (!previous) throw new Error("Shortcut not found.");
+
+  const wasRegistered = Boolean(shortcuts.get(id));
+  const runtimeUpdated = wasRegistered
+    ? shortcuts.update(id, action, accelerator)
+    : shortcuts.create({ id, action, accelerator });
+  if (!runtimeUpdated) throw new Error("That shortcut is unavailable or already in use.");
+
+  try {
+    return await settings.updateShortcut(id, action, accelerator);
+  } catch (error) {
+    shortcuts.remove(id);
+    if (wasRegistered) shortcuts.create(previous);
+    throw error;
+  }
+}
+
+async function removeShortcut(
+  settings: SettingsStore,
+  shortcuts: ShortcutManager,
+  id: string
+): Promise<AppSettings> {
+  const current = await settings.get();
+  const previous = current.shortcuts.bindings.find((binding) => binding.id === id);
+  if (!previous) throw new Error("Shortcut not found.");
+
+  const wasRegistered = Boolean(shortcuts.get(id));
+  if (wasRegistered) shortcuts.remove(id);
+  try {
+    return await settings.removeShortcut(id);
+  } catch (error) {
+    if (wasRegistered) shortcuts.create(previous);
+    throw error;
+  }
 }
 
 async function handleRendererCrash(recovery: RecoveryStore, reason: string): Promise<void> {

@@ -5,15 +5,18 @@
 - Independent Electron shell.
 - PulseCore lifecycle and capability metadata.
 - PulsePanel control center.
-- Integrated first-party shortcut settings and global shortcut engine.
-- Original built-in visual and accessibility plugins.
+- Dedicated PulseCord settings category.
+- Integrated shortcut editor and global shortcut engine.
+- First-party CSS theme editor and runtime.
+- Plugins page intentionally held in construction while the platform is hardened.
+- PulseCord/Follow Discord Home-icon selector with Discord's Nitro choices preserved.
 - Safe mode, settings migration, and crash recovery.
 
 ## Hardening
 
 - Automated security tests for IPC and navigation.
 - Screen-share selection flow and permission audit.
-- Update-independent compatibility probes for visual plugins.
+- Update-independent compatibility probes for renderer integrations.
 - Per-plugin health and startup timing stored locally.
 
 ## Plugin platform
@@ -25,7 +28,6 @@
 
 ## User experience
 
-- First-party theme editor.
 - Searchable local plugin catalog.
 - Import/export of settings without secrets.
 - Accessibility profiles and keyboard-first navigation.

@@ -1,8 +1,10 @@
 import type { NativeBridge } from "../shared/contracts";
+import { mountPulseCordBranding } from "./branding";
 import { mountControlCenter } from "./control-center";
 import { mountDiscordSettingsIntegration } from "./discord-settings";
 import { PluginRuntime } from "./plugin-runtime";
 import { BUILTIN_PLUGINS } from "./plugins";
+import { mountThemeRuntime } from "./theme-runtime";
 
 export async function bootPulseCord(bridge: NativeBridge): Promise<void> {
   if (window.top !== window) return;
@@ -11,6 +13,8 @@ export async function bootPulseCord(bridge: NativeBridge): Promise<void> {
   const runtime = new PluginRuntime(BUILTIN_PLUGINS, bridge);
 
   if (!environment.safeMode) await runtime.startConfigured(settings);
+  mountThemeRuntime(settings, environment);
+  mountPulseCordBranding(settings, bridge);
   mountDiscordSettingsIntegration(settings, bridge);
   await mountControlCenter(runtime, environment, settings, bridge);
 

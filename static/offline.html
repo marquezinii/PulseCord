@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; navigate-to https://discord.com" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; navigate-to https://discord.com" />
     <title>PulseCord — sem conexão</title>
     <style>
       :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #101218; color: #f3f4f7; }
       body { min-height: 100vh; margin: 0; display: grid; place-items: center; padding: 24px; }
       main { max-width: 440px; padding: 32px; border: 1px solid #303441; border-radius: 24px; background: #181b23; box-shadow: 0 24px 90px #0008; }
-      i { display: inline-grid; place-items: center; width: 46px; height: 46px; border-radius: 14px; background: #222630; font-style: normal; font-weight: 900; box-shadow: inset 0 -3px 0 #d43f55; }
+      img { display: block; width: 58px; height: 58px; border-radius: 16px; object-fit: cover; box-shadow: 0 10px 28px #0008; }
       h1 { margin: 18px 0 8px; font-size: 27px; letter-spacing: -.04em; }
       p { margin: 0 0 20px; color: #aab0bd; line-height: 1.55; }
       button { border: 0; border-radius: 11px; padding: 11px 15px; background: #d43f55; color: white; font: inherit; font-weight: 750; cursor: pointer; }
@@ -18,7 +18,7 @@
   </head>
   <body>
     <main>
-      <i>P</i>
+      <img src="pulsecord-logo.png" alt="" />
       <h1>Não foi possível conectar.</h1>
       <p>O PulseCord preservou sua sessão local. Verifique a internet e tente carregar o Discord novamente.</p>
       <button type="button" onclick="location.href='https://discord.com/app'">Tentar novamente</button>
