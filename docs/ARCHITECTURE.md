@@ -30,6 +30,12 @@ The first milestone compiles plugins into the preload bundle. Loading arbitrary 
 
 PulsePanel is mounted in a closed Shadow DOM root. It is independent of the page's component tree and private module loader. Discord interface changes can still affect individual CSS plugins, but they do not remove the PulseCord settings panel or corrupt the core runtime.
 
+PulsePanel is the quick control surface, while full shortcut editing lives in a first-party PulseCord page inserted into Discord's visible settings shell. The integration clones only the current native navigation item's presentation at runtime and mounts original PulseCord markup, styles, and behavior. It does not import Discord modules or another modified client's code. A compatibility observer remounts the entry when Discord recreates the settings modal, and PulsePanel remains available if that optional integration ever needs adapting.
+
+## Development launcher
+
+The Windows desktop shortcut starts a hidden PowerShell bootstrapper. That bootstrapper installs dependencies only when required, runs the clean-room build directly with Node, starts Electron directly, and exits after detecting the visible PulseCord window. npm and console hosts do not remain as parents of the running application.
+
 ## Persistence and recovery
 
 Settings are sanitized against a versioned schema and written atomically inside Electron's user-data directory. Two renderer failures within two minutes trigger a relaunch in safe mode. After one stable minute, the crash counter resets.

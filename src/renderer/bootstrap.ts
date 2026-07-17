@@ -1,5 +1,6 @@
 import type { NativeBridge } from "../shared/contracts";
 import { mountControlCenter } from "./control-center";
+import { mountDiscordSettingsIntegration } from "./discord-settings";
 import { PluginRuntime } from "./plugin-runtime";
 import { BUILTIN_PLUGINS } from "./plugins";
 
@@ -10,6 +11,7 @@ export async function bootPulseCord(bridge: NativeBridge): Promise<void> {
   const runtime = new PluginRuntime(BUILTIN_PLUGINS, bridge);
 
   if (!environment.safeMode) await runtime.startConfigured(settings);
+  mountDiscordSettingsIntegration(settings, bridge);
   await mountControlCenter(runtime, environment, settings, bridge);
 
   console.info(

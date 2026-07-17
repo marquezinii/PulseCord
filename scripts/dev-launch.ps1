@@ -6,6 +6,7 @@ $logFile = Join-Path $workDir "dev-launch.log"
 $stdoutLog = Join-Path $workDir "dev-launch.stdout.log"
 $stderrLog = Join-Path $workDir "dev-launch.stderr.log"
 $dependencyMarker = Join-Path $repoRoot "node_modules\.pulsecord-ready"
+$buildScript = Join-Path $repoRoot "scripts\build.mjs"
 
 New-Item -ItemType Directory -Path $workDir -Force | Out-Null
 Set-Location $repoRoot
@@ -26,14 +27,18 @@ try {
 
     if ($needsInstall) {
         "Installing the clean-room dependency set" | Add-Content $logFile
-        & $npm.Source ci *>> $logFile
-        if ($LASTEXITCODE -ne 0) { throw "Dependency installation failed with exit code $LASTEXITCODE." }
+        $install = Start-Process -FilePath $npm.Source -ArgumentList "ci" -WorkingDirectory $repoRoot -WindowStyle Hidden -Wait -PassThru `
+            -RedirectStandardOutput $stdoutLog -RedirectStandardError $stderrLog
+        if ($install.ExitCode -ne 0) { throw "Dependency installation failed with exit code $($install.ExitCode)." }
         New-Item -ItemType File -Path $dependencyMarker -Force | Out-Null
     }
 
-    $pulseCord = Start-Process -FilePath $npm.Source -ArgumentList "start" -WorkingDirectory $repoRoot -PassThru `
-        -RedirectStandardOutput $stdoutLog -RedirectStandardError $stderrLog
+    "Building the latest workspace without an npm launcher process" | Add-Content $logFile
+    & $node.Source $buildScript 1> $stdoutLog 2> $stderrLog
+    if ($LASTEXITCODE -ne 0) { throw "PulseCord build failed with exit code $LASTEXITCODE." }
+
     $electronPath = (Resolve-Path (Join-Path $repoRoot "node_modules\electron\dist\electron.exe")).Path
+    $pulseCord = Start-Process -FilePath $electronPath -ArgumentList $repoRoot -WorkingDirectory $repoRoot -PassThru
     $startupDeadline = (Get-Date).AddSeconds(90)
     $visibleWindow = $null
 
@@ -53,8 +58,8 @@ try {
     }
 
     "PulseCord window opened (PID $($visibleWindow.Id))" | Add-Content $logFile
-    $pulseCord.WaitForExit()
-    "PulseCord session ended after a successful launch" | Add-Content $logFile
+    "Launcher finished; only the PulseCord application remains open" | Add-Content $logFile
+    exit 0
 } catch {
     $_ | Out-String | Add-Content $logFile
     Add-Type -AssemblyName PresentationFramework

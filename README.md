@@ -15,8 +15,9 @@ The permanent clean-room boundary and its exception process are defined in [`doc
 - PulseCore, our capability-based lifecycle for first-party plugins.
 - Four original built-in plugins: Pulse Theme, Focus Mode, Compact Layout, and Reduced Motion.
 - PulsePanel, a Shadow DOM control center that does not depend on Discord's private module system.
+- First-party global shortcuts managed from an original PulseCord page inside Discord's settings shell.
 - Atomic local settings, safe mode, renderer crash recovery, and an offline screen.
-- A development shortcut that rebuilds the latest workspace before every launch.
+- A silent development shortcut that rebuilds the latest workspace before every launch without leaving terminal processes open.
 
 External plugin loading and public installers are intentionally disabled. This repository publishes source code only while the security model and plugin format are being established.
 
@@ -37,7 +38,7 @@ Create or refresh the desktop shortcut:
 npm run shortcut:windows
 ```
 
-The shortcut points to `scripts/dev-launch.ps1`, not to a frozen executable. Every launch therefore builds and opens the current checkout.
+The shortcut points to `scripts/dev-launch.ps1`, not to a frozen executable. Every launch therefore builds and opens the current checkout. The hidden launcher exits as soon as the PulseCord window is visible, so no npm, Command Prompt, or PowerShell window remains in the taskbar.
 
 ## Project map
 

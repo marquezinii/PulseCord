@@ -5,6 +5,7 @@
 - Independent Electron shell.
 - PulseCore lifecycle and capability metadata.
 - PulsePanel control center.
+- Integrated first-party shortcut settings and global shortcut engine.
 - Original built-in visual and accessibility plugins.
 - Safe mode, settings migration, and crash recovery.
 
