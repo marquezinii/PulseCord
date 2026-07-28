@@ -5,7 +5,7 @@ import {
   OPEN_PULSECORD_SETTINGS_EVENT,
   type PulseCordSettingsPage
 } from "./discord-settings";
-import type { PluginRuntime } from "./plugin-runtime";
+import type { PluginRuntime } from "./pulsecore";
 
 let disposeShortcutListener: (() => void) | undefined;
 

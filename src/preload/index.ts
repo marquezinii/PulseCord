@@ -7,6 +7,7 @@ import {
   isTrustedDiscordUrl,
   type BuiltinPluginId,
   type HomeIconPreference,
+  type JsonValue,
   type NativeBridge,
   type ShortcutAccelerator,
   type ShortcutAction
@@ -19,6 +20,9 @@ const bridge: NativeBridge = Object.freeze({
   getEnvironment: () => ipcRenderer.invoke(IPC.environment),
   getSettings: () => ipcRenderer.invoke(IPC.settingsGet),
   setPluginEnabled: (id: BuiltinPluginId, enabled: boolean) => ipcRenderer.invoke(IPC.pluginSetEnabled, id, enabled),
+  getPluginData: (id: BuiltinPluginId) => ipcRenderer.invoke(IPC.pluginDataGet, id),
+  setPluginData: (id: BuiltinPluginId, data: Record<string, JsonValue>) =>
+    ipcRenderer.invoke(IPC.pluginDataSet, id, data),
   createShortcut: (action: ShortcutAction, accelerator: string) =>
     ipcRenderer.invoke(IPC.shortcutCreate, action, accelerator),
   updateShortcut: (id: string, action: ShortcutAction, accelerator: string) =>

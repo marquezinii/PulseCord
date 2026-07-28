@@ -1,4 +1,4 @@
-import type { PluginDefinition } from "../plugin-runtime";
+import type { PluginDefinition } from "../pulsecore";
 
 /**
  * The runtime remains part of PulseCore, but PulseCord does not ship plugins yet.

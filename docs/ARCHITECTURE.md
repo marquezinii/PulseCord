@@ -14,7 +14,7 @@ Display sharing is implemented through Electron's supported display-media reques
 
 PulseCord also owns its desktop shortcut engine. Electron registers only accelerators explicitly chosen by the user, `SettingsStore` persists them in the versioned local settings schema, and a narrow IPC channel dispatches only allowlisted first-party actions. Discord's private keybind implementation is not loaded or imitated.
 
-Schema version 3 stores shortcut bindings by ID, the local CSS theme, and the Home-icon preference. Shortcut combinations and actions are unique, and the store accepts at most 64 bindings.
+Schema version 4 stores shortcut bindings by ID, the local CSS theme, the Home-icon preference, and a per-plugin JSON data bucket (`pluginData`) used by PulseCore's `settings` capability. Shortcut combinations and actions are unique, the store accepts at most 64 bindings, and each plugin's data bucket is capped at 64&nbsp;KB.
 
 ## Preload bridge
 
@@ -24,11 +24,19 @@ This prevents page scripts from gaining direct settings, filesystem, relaunch, o
 
 ## PulseCore
 
-PulseCore is the first-party plugin lifecycle. A plugin declares an ID, version, description, and capabilities before receiving a restricted context. The context currently supports scoped styles, root classes, document events, and mutation observers.
+PulseCore is the first-party plugin engine, implemented under `src/renderer/pulsecore/`. It is an original design: it does not patch Discord's private webpack modules the way other Discord client mods do, and it does not reuse code, structure, or naming from any of them. Everything it touches is public DOM, CSS, and browser event surface, consistent with the clean-room policy.
 
-Every resource registered through the context receives a cleanup function. Disabling a plugin reverses its cleanup stack, so experiments do not leave stale styles or observers behind.
+A plugin (`PluginDefinition`) declares an ID, version, description, and the capabilities it needs (`dom`, `events`, `settings`, `commands`). `PluginRuntime` grants access to a `PluginContext` built specifically for that plugin: a facet is only present on the context object when the plugin declared the matching capability, so an undeclared capability is unreachable both at the type level and at runtime, not just by convention.
 
-The first milestone compiles plugins into the preload bundle. Loading arbitrary local or remote JavaScript is intentionally unsupported until manifest validation, permissions, signatures, and crash isolation are implemented. PulseCord 0.2 deliberately registers no built-in plugins.
+- **`lifecycle`** (always available): `setInterval`/`setTimeout`/`onDispose`/`cleanup.add` register resources that are automatically unwound, in reverse order, when the plugin stops.
+- **`dom`**: `addBodyClass`, `addStyle`, `addEventListener`, `observe`, and `patch(selector, apply)` — the last one applies a function to every element matching a selector, present or future, and calls the function it returns to undo the change when that element leaves the document. This removes the need for plugins to hand-roll `MutationObserver` bookkeeping to survive Discord's own DOM churn.
+- **`events`**: `on`/`emit` over a shared `EventBus`, used both for plugin-to-plugin messaging and for core lifecycle notifications (`plugin:state-changed`, `plugin:crashed`).
+- **`settings`**: `get`/`set`/`all`, a per-plugin JSON storage bucket persisted by the main process (`AppSettings.pluginData`), isolated from the global schema and from the Discord page's own storage.
+- **`commands`**: `register(id, label, handler)` names a plugin action in a shared `CommandRegistry`, without wiring it to any specific input source. This is the seam future integrations (a command palette, a shortcut target) attach to, without the plugin or the engine needing to change.
+
+Every callback a plugin hands to any facet — a listener, an observer callback, a timer, a command handler, a `patch` function — is wrapped so a thrown error is caught and routed to the runtime instead of propagating into PulseCord or the Discord page. A runtime error automatically stops only that plugin (`PluginState` transitions to `"error"`), running its full cleanup stack and emitting `plugin:crashed`; every other plugin and the shell keep running.
+
+Plugins still compile into the bundle rather than loading arbitrary local or remote JavaScript; a signed/permissioned model for out-of-bundle plugins remains future work (see Roadmap). PulseCord 0.2 deliberately registers no built-in plugins yet — the engine is intentionally exercised by nothing until the first real plugin is implemented and reviewed.
 
 ## PulsePanel and settings integration
 

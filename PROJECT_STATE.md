@@ -34,7 +34,8 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
 
 - `src/main`: janela, segurança, IPC, persistência, atalhos e recuperação;
 - `src/preload`: ponte restrita entre a página e o processo principal;
-- `src/renderer`: PulsePanel, branding, configurações, temas e PulseCore;
+- `src/renderer`: PulsePanel, branding, configurações, temas e PulseCore
+  (`src/renderer/pulsecore`: motor de plugins first-party);
 - `src/shared`: contratos versionados compartilhados;
 - `assets` e `build`: identidade visual e ícones do produto;
 - `scripts`: build, verificação clean-room e launcher de desenvolvimento;
@@ -77,6 +78,19 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
   ao limpar autostart legado agora são logadas em vez de silenciadas; arquivos
   de settings colocados em quarentena por corrupção são limitados a 3 cópias
   mais recentes.
+- PulseCore foi reconstruído do zero em `src/renderer/pulsecore/` (motor de
+  plugins first-party original, sem qualquer semelhança com Vencord/Equicord
+  ou outros clientes modificados): capacidades declaradas (`dom`, `events`,
+  `settings`, `commands`) só ficam acessíveis no contexto do plugin que as
+  declarou; toda função registrada por um plugin roda isolada, e um erro em
+  tempo de execução desativa e limpa somente aquele plugin, preservando o
+  restante do shell; `dom.patch(seletor, aplicar)` reaplica/desfaz mudanças
+  conforme elementos do Discord aparecem/somem, sem o plugin reimplementar
+  `MutationObserver`; cada plugin ganhou armazenamento próprio persistido
+  (`AppSettings.pluginData`, schema versão 4) e um `CommandRegistry`
+  compartilhado para nomear ações que integrações futuras (paleta de
+  comandos, atalhos) poderão acionar sem alterar o motor. Continua sem
+  nenhum plugin first-party habilitado; o motor está pronto, mas ainda vazio.
 
 ## Funcionalidades em andamento
 

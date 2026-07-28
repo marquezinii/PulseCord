@@ -2,7 +2,7 @@ import type { NativeBridge } from "../shared/contracts";
 import { mountPulseCordBranding } from "./branding";
 import { mountControlCenter } from "./control-center";
 import { mountDiscordSettingsIntegration } from "./discord-settings";
-import { PluginRuntime } from "./plugin-runtime";
+import { PluginRuntime } from "./pulsecore";
 import { BUILTIN_PLUGINS } from "./plugins";
 import { mountThemeRuntime } from "./theme-runtime";
 

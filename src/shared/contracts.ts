@@ -20,6 +20,8 @@ export const IPC = {
   // Kept while older development renderers are migrated to binding IDs.
   shortcutSet: "pulsecord:shortcuts:set",
   shortcutTriggered: "pulsecord:shortcuts:triggered",
+  pluginDataGet: "pulsecord:plugin-data:get",
+  pluginDataSet: "pulsecord:plugin-data:set",
   themeSet: "pulsecord:theme:set",
   homeIconSet: "pulsecord:appearance:home-icon:set",
   welcomeSeen: "pulsecord:welcome:seen",
@@ -62,9 +64,12 @@ export interface ThemeSettings {
   customCss: string;
 }
 
+export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
 export interface AppSettings {
-  schemaVersion: 3;
+  schemaVersion: 4;
   plugins: Record<BuiltinPluginId, boolean>;
+  pluginData: Record<BuiltinPluginId, Record<string, JsonValue>>;
   shortcuts: {
     bindings: ShortcutBinding[];
   };
@@ -87,6 +92,8 @@ export interface NativeBridge {
   getEnvironment(): Promise<RuntimeEnvironment>;
   getSettings(): Promise<AppSettings>;
   setPluginEnabled(id: BuiltinPluginId, enabled: boolean): Promise<AppSettings>;
+  getPluginData(id: BuiltinPluginId): Promise<Record<string, JsonValue>>;
+  setPluginData(id: BuiltinPluginId, data: Record<string, JsonValue>): Promise<Record<string, JsonValue>>;
   createShortcut(action: ShortcutAction, accelerator: string): Promise<AppSettings>;
   updateShortcut(id: string, action: ShortcutAction, accelerator: string): Promise<AppSettings>;
   removeShortcut(id: string): Promise<AppSettings>;
@@ -103,10 +110,12 @@ export interface NativeBridge {
 
 export const MAX_SHORTCUT_BINDINGS = 64;
 export const MAX_CUSTOM_CSS_LENGTH = 128 * 1024;
+export const MAX_PLUGIN_DATA_BYTES = 64 * 1024;
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  schemaVersion: 3,
+  schemaVersion: 4,
   plugins: {},
+  pluginData: {},
   shortcuts: {
     bindings: []
   },
@@ -175,10 +184,26 @@ export function isCustomCss(value: unknown): value is string {
   return true;
 }
 
+export function isJsonValue(value: unknown, depth = 0): value is JsonValue {
+  if (depth > 8) return false;
+  if (value === null) return true;
+  if (typeof value === "string" || typeof value === "boolean") return true;
+  if (typeof value === "number") return Number.isFinite(value);
+  if (Array.isArray(value)) return value.every((item) => isJsonValue(item, depth + 1));
+  if (typeof value === "object") return Object.values(value as Record<string, unknown>).every((item) => isJsonValue(item, depth + 1));
+  return false;
+}
+
+export function isPluginDataBucket(value: unknown): value is Record<string, JsonValue> {
+  if (!isRecord(value) || !isJsonValue(value)) return false;
+  return new TextEncoder().encode(JSON.stringify(value)).byteLength <= MAX_PLUGIN_DATA_BYTES;
+}
+
 export function sanitizeSettings(value: unknown): AppSettings {
   if (!isRecord(value)) return structuredClone(DEFAULT_SETTINGS);
 
   const pluginCandidate = isRecord(value.plugins) ? value.plugins : {};
+  const pluginDataCandidate = isRecord(value.pluginData) ? value.pluginData : {};
   const uiCandidate = isRecord(value.ui) ? value.ui : {};
   const themeCandidate = isRecord(value.theme) ? value.theme : {};
   const appearanceCandidate = isRecord(value.appearance) ? value.appearance : {};
@@ -187,13 +212,16 @@ export function sanitizeSettings(value: unknown): AppSettings {
   const customCss: string = hasValidCustomCss ? rawCustomCss : DEFAULT_SETTINGS.theme.customCss;
 
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     plugins: Object.fromEntries(
       BUILTIN_PLUGIN_IDS.map((id) => [
         id,
         typeof pluginCandidate[id] === "boolean" ? pluginCandidate[id] : DEFAULT_SETTINGS.plugins[id]
       ])
     ) as Record<BuiltinPluginId, boolean>,
+    pluginData: Object.fromEntries(
+      BUILTIN_PLUGIN_IDS.map((id) => [id, isPluginDataBucket(pluginDataCandidate[id]) ? pluginDataCandidate[id] : {}])
+    ) as Record<BuiltinPluginId, Record<string, JsonValue>>,
     shortcuts: {
       bindings: sanitizeShortcutBindings(value.shortcuts)
     },

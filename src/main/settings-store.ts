@@ -5,6 +5,7 @@ import {
   type AppSettings,
   type BuiltinPluginId,
   type HomeIconPreference,
+  type JsonValue,
   type ShortcutAction,
   type ShortcutBinding,
   DEFAULT_SETTINGS,
@@ -82,6 +83,18 @@ export class SettingsStore {
       if (index === -1) throw new Error("Shortcut not found.");
       settings.shortcuts.bindings.splice(index, 1);
     });
+  }
+
+  async getPluginData(id: BuiltinPluginId): Promise<Record<string, JsonValue>> {
+    const settings = await this.get();
+    return structuredClone(settings.pluginData[id] ?? {});
+  }
+
+  async setPluginData(id: BuiltinPluginId, data: Record<string, JsonValue>): Promise<Record<string, JsonValue>> {
+    const next = await this.#update((settings) => {
+      (settings.pluginData as Record<string, Record<string, JsonValue>>)[id] = data;
+    });
+    return next.pluginData[id] ?? {};
   }
 
   async setTheme(customCss: string, enabled: boolean): Promise<AppSettings> {

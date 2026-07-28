@@ -7,6 +7,7 @@ import {
   isBuiltinPluginId,
   isCustomCss,
   isHomeIconPreference,
+  isPluginDataBucket,
   isShortcutAccelerator,
   isShortcutAction,
   isShortcutBindingId,
@@ -140,6 +141,18 @@ function registerIpc(settings: SettingsStore, shortcuts: ShortcutManager): void 
     assertSender(senderUrl(event));
     if (!isShortcutBindingId(id)) throw new TypeError("Invalid desktop shortcut removal.");
     return removeShortcut(settings, shortcuts, id);
+  });
+
+  ipcMain.handle(IPC.pluginDataGet, async (event, id: unknown) => {
+    assertSender(senderUrl(event));
+    if (!isBuiltinPluginId(id)) throw new TypeError("Invalid plugin id.");
+    return settings.getPluginData(id);
+  });
+
+  ipcMain.handle(IPC.pluginDataSet, async (event, id: unknown, data: unknown) => {
+    assertSender(senderUrl(event));
+    if (!isBuiltinPluginId(id) || !isPluginDataBucket(data)) throw new TypeError("Invalid plugin data update.");
+    return settings.setPluginData(id, data);
   });
 
   ipcMain.handle(IPC.shortcutRegistrationsGet, (event) => {
