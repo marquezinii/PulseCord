@@ -1,5 +1,9 @@
 # PulseCord
 
+<p align="center">
+  <img src="assets/pulsecord-logo.png" alt="PulseCord" width="192" />
+</p>
+
 PulseCord is an independent, open-source desktop shell for Discord with its own plugin runtime, theme layer, settings storage, recovery mode, and user interface.
 
 This repository is a clean-room implementation. The current runtime does not import, bundle, download, or execute the codebase of another Discord client modification. Its only application dependency at runtime is Electron; the Discord experience itself is loaded from `https://discord.com/app`.

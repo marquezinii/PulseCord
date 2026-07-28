@@ -56,12 +56,14 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
 - launcher `scripts/dev-launch.ps1` e atalho `PulseCord Dev.lnk`, que usam o
   workspace atual sem manter consoles visíveis;
 - verificação clean-room disponível em `npm run verify:independence`.
+- compartilhamento de tela por seletor nativo do PulseCord, limitado a pedidos
+  com gesto do usuário no Discord confiável; no Windows, o áudio do sistema é
+  fornecido quando solicitado pelo Discord.
 
 ## Funcionalidades em andamento
 
-- Nenhuma implementação de produto em andamento neste momento.
-- Esta rodada estabelece a memória permanente e o fluxo obrigatório para IAs:
-  `AI_RULES.md` e este arquivo.
+- Substituição integral da identidade visual pela marca transparente fornecida
+  em 28/07/2026, incluindo fontes de ícone, pacote, atalho, app e README.
 
 ## Planejado
 
@@ -78,15 +80,26 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
   modificados sem autorização explícita.
 - O aplicativo usa o Discord oficial na web; integrações de interface dependem
   do DOM público disponível e devem ser tratadas como camada de compatibilidade.
+- A captura de tela usa exclusivamente a API pública do Electron. O seletor
+  atual oferece monitores inteiros; compartilhamento de janela/aplicativo fica
+  planejado para evolução posterior.
 - Plugins externos permanecem desabilitados por projeto; a área Plugins informa
   que o recurso está em construção.
 - Não há instalador ou release pública nesta fase; o repositório publica fonte.
 - A marca do PulseCord é própria; o símbolo do Discord permanece somente como
   atribuição de serviço, conforme `BRAND_ASSETS.md`.
 
+## Bugs conhecidos e validação pendente
+
+- O executável empacotado inicia e a integração de captura compila, mas a
+  validação ponta a ponta de iniciar e assistir uma transmissão ainda requer uma
+  conta autenticada em canal de voz e outro participante transmitindo. Ela não
+  é simulada nem afirmada como concluída sem esse cenário real.
+
 ## Git e publicação
 
-- `main` e `dev/proxima-versao` apontam atualmente para `0b0695d`.
+- `main` aponta para `0b0695d`; `dev/proxima-versao` contém o commit de
+  governança `2667281` e recebe o desenvolvimento atual.
 - A antiga branch `codex/clean-room-core` foi integrada e removida local/remota.
 - A PR #1 foi integrada em `main`.
 - Todo desenvolvimento futuro ocorre em `dev/proxima-versao`.
@@ -105,4 +118,6 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
 1. Executar qualquer nova funcionalidade exclusivamente em `dev/proxima-versao`.
 2. Manter este arquivo atualizado a cada mudança técnica relevante.
 3. Projetar a segurança de plugins externos antes de habilitar instalações.
-4. Manter releases e instaladores fora de escopo até pedido explícito do usuário.
+4. Evoluir o seletor de compartilhamento para janelas/aplicativos, mantendo a
+   aprovação explícita do usuário e o limite de origem confiável.
+5. Manter releases e instaladores fora de escopo até pedido explícito do usuário.

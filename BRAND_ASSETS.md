@@ -1,6 +1,6 @@
 # Brand assets
 
-`assets/pulsecord-logo.png` is the official PulseCord product mark supplied by the project owner. It is the single source of truth for PulseCord surfaces. The Windows and Linux/macOS package icons in `build/icon.ico` and `build/icon.png` are generated from this image; do not redraw or substitute it in individual features.
+`assets/pulsecord-logo.png` is the official PulseCord product mark supplied by the project owner. It is the single source of truth for PulseCord surfaces. The Windows and Linux/macOS package icons in `build/icon.ico` and `build/icon.png` are generated from this image; do not redraw or substitute it in individual features. The current approved source is the transparent PulseCord mark supplied on 28/07/2026.
 
 `assets/discord-symbol.svg` is the unmodified white Discord symbol downloaded from Discord's official branding page. It is used only to identify the Discord service inside PulseCord and is not the PulseCord product logo.
 

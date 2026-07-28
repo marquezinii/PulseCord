@@ -52,7 +52,7 @@ if (!hasSingleInstanceLock) {
       console.warn(`[PulseCord] ${unavailableShortcuts.length} saved shortcut(s) could not be registered.`);
     }
     registerIpc(settings, shortcuts);
-    configureSession(session.defaultSession);
+    configureSession(session.defaultSession, () => mainWindow);
     configureDesktopIdentity(session.defaultSession);
 
     const openWindow = (): void => {

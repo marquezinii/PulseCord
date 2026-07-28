@@ -4,11 +4,13 @@ PulseCord 0.2 is deliberately small. The system is split across Electron's trust
 
 ## Main process
 
-The main process owns the window, local settings, recovery records, permissions, navigation, and operating-system actions. It exposes a versioned allowlist of narrow IPC operations plus a one-way shortcut event. Every request validates the sender URL and every mutable argument.
+The main process owns the window, local settings, recovery records, permissions, navigation, display-media selection, and operating-system actions. It exposes a versioned allowlist of narrow IPC operations plus a one-way shortcut event. Every request validates the sender URL and every mutable argument.
 
 The main window loads only the official Discord web application. External navigation is opened in the system browser. Webviews are blocked, Node integration is disabled, context isolation is enabled, and the renderer is sandboxed.
 
 Desktop identity belongs to PulseCord itself. The shell classifies its Discord API and Gateway session as desktop while keeping the `PulseCord/<version>` user agent. It does not expose or imitate another desktop client's private native bridge.
+
+Display sharing is implemented through Electron's supported display-media request handler. Only a user-initiated request from a trusted Discord origin can open the PulseCord-owned native display picker. The handler enumerates screens, grants only the screen explicitly selected by the user, and supplies Windows system audio only when Discord requested it. Received Discord streams remain ordinary Chromium/WebRTC media inside the trusted page; PulseCord does not proxy, inspect, or persist their media.
 
 PulseCord also owns its desktop shortcut engine. Electron registers only accelerators explicitly chosen by the user, `SettingsStore` persists them in the versioned local settings schema, and a narrow IPC channel dispatches only allowlisted first-party actions. Discord's private keybind implementation is not loaded or imitated.
 

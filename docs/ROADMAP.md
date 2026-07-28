@@ -15,7 +15,7 @@
 ## Hardening
 
 - Automated security tests for IPC and navigation.
-- Screen-share selection flow and permission audit.
+- App/window-specific sharing controls and additional cross-platform capture audit.
 - Update-independent compatibility probes for renderer integrations.
 - Per-plugin health and startup timing stored locally.
 
