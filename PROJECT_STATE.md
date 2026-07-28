@@ -1,0 +1,108 @@
+# Estado do Projeto — PulseCord
+
+_Atualizado em 28/07/2026._
+
+## Objetivo
+
+PulseCord é um shell desktop independente, público e open source para usar o
+Discord oficial em uma aplicação Electron segura. O produto está na fase de
+fundação: disponibiliza personalização própria, temas locais, atalhos globais e
+uma base de plugins first-party, sem instalador ou carregamento de plugins de
+terceiros.
+
+O checkout canônico é `C:\Projetos\PulseCord`. O repositório remoto é
+`marquezinii/PulseCord` e a branch de desenvolvimento ativa é
+`dev/proxima-versao`.
+
+## Arquitetura e tecnologias
+
+- Electron 41, Node.js 24+, npm 11+, TypeScript 6 e esbuild;
+- processos separados: `src/main`, `src/preload`, `src/renderer` e `src/shared`;
+- janela isolada e sandboxed que carrega somente `https://discord.com/app`;
+- IPC versionado, estreito e validado no processo principal;
+- `PulseCore` para ciclo de vida de plugins first-party com capacidades
+  limitadas e limpeza reversível;
+- `PulsePanel` em Shadow DOM fechado e integração de configurações sem importar
+  módulos privados do Discord;
+- persistência local atômica, schema versionado, recuperação por safe mode e
+  atalhos globais registrados explicitamente pelo usuário.
+
+A descrição arquitetural detalhada está em `docs/ARCHITECTURE.md`. Segurança,
+API de plugins, roadmap e política clean-room estão em `docs/`.
+
+## Estrutura relevante
+
+- `src/main`: janela, segurança, IPC, persistência, atalhos e recuperação;
+- `src/preload`: ponte restrita entre a página e o processo principal;
+- `src/renderer`: PulsePanel, branding, configurações, temas e PulseCore;
+- `src/shared`: contratos versionados compartilhados;
+- `assets` e `build`: identidade visual e ícones do produto;
+- `scripts`: build, verificação clean-room e launcher de desenvolvimento;
+- `docs`: decisões e políticas técnicas;
+- `outputs`: pacotes locais gerados, sem publicação automática.
+
+## Funcionalidades concluídas
+
+- Shell Electron com login no domínio oficial, sem coleta de senha do Discord;
+- identidade desktop do PulseCord, sem ponte privada de outro cliente;
+- categoria PulseCord nas configurações: Plugins, Themes e PulseCord Shortcuts;
+- editor de CSS local com preview, persistência explícita, safe mode e bloqueio
+  de imports/recursos remotos;
+- atalhos globais próprios, com criação, edição, remoção e detecção de conflito;
+- lista padrão de atalhos do Discord preservada quando disponível, sem copiar
+  implementação privada;
+- PulsePanel, branding e opção para acompanhar o ícone Home do Discord;
+- persistência atômica, recuperação de falha do renderer e tela offline;
+- launcher `scripts/dev-launch.ps1` e atalho `PulseCord Dev.lnk`, que usam o
+  workspace atual sem manter consoles visíveis;
+- verificação clean-room disponível em `npm run verify:independence`.
+
+## Funcionalidades em andamento
+
+- Nenhuma implementação de produto em andamento neste momento.
+- Esta rodada estabelece a memória permanente e o fluxo obrigatório para IAs:
+  `AI_RULES.md` e este arquivo.
+
+## Planejado
+
+- Modelo seguro para plugins externos: manifestos, permissões, assinaturas e
+  isolamento de falhas antes de executar JavaScript de terceiros;
+- evolução da biblioteca de temas e experiência de personalização;
+- testes automatizados mais amplos para integrações visíveis do Discord;
+- instalador e fluxo de release somente após autorização explícita e validação
+  de segurança/distribuição.
+
+## Decisões técnicas e limites
+
+- Clean-room é obrigatório: não usar código, base ou runtime de outros clientes
+  modificados sem autorização explícita.
+- O aplicativo usa o Discord oficial na web; integrações de interface dependem
+  do DOM público disponível e devem ser tratadas como camada de compatibilidade.
+- Plugins externos permanecem desabilitados por projeto; a área Plugins informa
+  que o recurso está em construção.
+- Não há instalador ou release pública nesta fase; o repositório publica fonte.
+- A marca do PulseCord é própria; o símbolo do Discord permanece somente como
+  atribuição de serviço, conforme `BRAND_ASSETS.md`.
+
+## Git e publicação
+
+- `main` e `dev/proxima-versao` apontam atualmente para `0b0695d`.
+- A antiga branch `codex/clean-room-core` foi integrada e removida local/remota.
+- A PR #1 foi integrada em `main`.
+- Todo desenvolvimento futuro ocorre em `dev/proxima-versao`.
+- Push de desenvolvimento é somente backup/sincronização e não altera `main`,
+  versão, tag, release, instalador ou site.
+
+## Validações conhecidas
+
+- `npm run check`: typecheck e verificação da independência clean-room;
+- `npm run build`: gera os bundles locais em `dist/`;
+- `npm run package:dir`: gera pacote local unpacked em `outputs/`;
+- `npm run shortcut:windows`: cria/atualiza o atalho de desenvolvimento.
+
+## Próximos passos
+
+1. Executar qualquer nova funcionalidade exclusivamente em `dev/proxima-versao`.
+2. Manter este arquivo atualizado a cada mudança técnica relevante.
+3. Projetar a segurança de plugins externos antes de habilitar instalações.
+4. Manter releases e instaladores fora de escopo até pedido explícito do usuário.
