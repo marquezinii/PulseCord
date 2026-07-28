@@ -1,3 +1,14 @@
+const TRUSTED_DISCORD_HOSTS = new Set(["discord.com", "canary.discord.com", "ptb.discord.com"]);
+
+export function isTrustedDiscordUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && TRUSTED_DISCORD_HOSTS.has(url.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
 export const IPC = {
   environment: "pulsecord:environment",
   settingsGet: "pulsecord:settings:get",

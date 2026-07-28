@@ -20,7 +20,13 @@ function deleteRegistryValue(key: string): Promise<void> {
       "reg.exe",
       ["delete", key, "/v", LEGACY_STARTUP_VALUE, "/f"],
       { windowsHide: true },
-      () => resolve()
+      (error, _stdout, stderr) => {
+        // Error code 1 means the value did not exist, which is the expected steady state.
+        if (error && error.code !== 1) {
+          console.warn(`[PulseCord] Could not remove legacy autostart entry from ${key}: ${stderr.trim() || error.message}`);
+        }
+        resolve();
+      }
     );
   });
 }

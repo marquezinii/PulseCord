@@ -67,6 +67,16 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
 - identidade de mídia compatível com Chromium na janela e na sessão, mantendo a
   classificação desktop na API e no Gateway sem anunciar a ponte proprietária
   `DiscordNative`.
+- reforço de robustez após auditoria de pontos frágeis: alerta único no console
+  quando o formato de `X-Super-Properties` ou do payload `IDENTIFY` do Gateway
+  muda e deixa de ser reconhecido; instalação do patch de identidade do Gateway
+  agora só ocorre quando a página carregada é um domínio confiável do Discord;
+  seleção de fontes de tela tem timeout de 8s para não travar indefinidamente
+  em `desktopCapturer.getSources`; validação de remetente IPC via `file://`
+  passou a exigir o caminho exato de `offline.html`; falhas reais do `reg.exe`
+  ao limpar autostart legado agora são logadas em vez de silenciadas; arquivos
+  de settings colocados em quarentena por corrupção são limitados a 3 cópias
+  mais recentes.
 
 ## Funcionalidades em andamento
 

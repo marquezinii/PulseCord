@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
@@ -11,6 +11,8 @@ import {
   MAX_SHORTCUT_BINDINGS,
   sanitizeSettings
 } from "../shared/contracts";
+
+const MAX_QUARANTINE_FILES = 3;
 
 export class SettingsStore {
   readonly #filePath: string;
@@ -124,6 +126,7 @@ export class SettingsStore {
         const quarantinePath = `${this.#filePath}.corrupt-${Date.now()}`;
         await rename(this.#filePath, quarantinePath);
         console.error(`[PulseCord] Invalid settings were preserved at ${quarantinePath}.`);
+        await this.#pruneQuarantineFiles();
         return structuredClone(DEFAULT_SETTINGS);
       }
     })();
@@ -151,6 +154,18 @@ export class SettingsStore {
       () => undefined
     );
     return operation;
+  }
+
+  async #pruneQuarantineFiles(): Promise<void> {
+    const directory = path.dirname(this.#filePath);
+    const prefix = `${path.basename(this.#filePath)}.corrupt-`;
+    try {
+      const entries = (await readdir(directory)).filter((name) => name.startsWith(prefix)).sort();
+      const stale = entries.slice(0, Math.max(0, entries.length - MAX_QUARANTINE_FILES));
+      await Promise.all(stale.map((name) => unlink(path.join(directory, name)).catch(() => undefined)));
+    } catch {
+      // Best-effort cleanup; a failure here must not block settings recovery.
+    }
   }
 
   async #writeAtomically(settings: AppSettings): Promise<void> {

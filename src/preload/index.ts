@@ -4,6 +4,7 @@ import { bootPulseCord } from "../renderer/bootstrap";
 import {
   IPC,
   isShortcutAction,
+  isTrustedDiscordUrl,
   type BuiltinPluginId,
   type HomeIconPreference,
   type NativeBridge,
@@ -12,7 +13,7 @@ import {
 } from "../shared/contracts";
 import { installDesktopGatewayIdentity } from "./desktop-identity";
 
-installDesktopGatewayIdentity(navigator.userAgent);
+if (isTrustedDiscordUrl(window.location.href)) installDesktopGatewayIdentity(navigator.userAgent);
 
 const bridge: NativeBridge = Object.freeze({
   getEnvironment: () => ipcRenderer.invoke(IPC.environment),

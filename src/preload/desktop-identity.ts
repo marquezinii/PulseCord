@@ -25,10 +25,21 @@ export function installDesktopGatewayIdentity(userAgent: string): void {
                 d?: { properties?: Record<string, unknown> };
               };
 
-              if (payload.op === 2 && payload.d?.properties) {
-                payload.d.properties.browser = browserClass;
-                payload.d.properties.browser_user_agent = desktopUserAgent;
-                outgoing = JSON.stringify(payload);
+              if (payload.op === 2) {
+                if (payload.d?.properties) {
+                  payload.d.properties.browser = browserClass;
+                  payload.d.properties.browser_user_agent = desktopUserAgent;
+                  outgoing = JSON.stringify(payload);
+                } else {
+                  const warnMarker = Symbol.for("pulsecord.desktop-identity.warned");
+                  const globalScope = globalThis as Record<PropertyKey, unknown>;
+                  if (!globalScope[warnMarker]) {
+                    globalScope[warnMarker] = true;
+                    console.warn(
+                      "[PulseCord] Discord's Gateway IDENTIFY payload changed shape; PulseCord could not mark this session as a desktop client."
+                    );
+                  }
+                }
               }
             }
           } catch {

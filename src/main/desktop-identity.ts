@@ -34,15 +34,29 @@ export function configureDesktopIdentity(session: Session, userAgent: string): v
   });
 }
 
+let warnedAboutShapeMismatch = false;
+
 function rewriteSuperProperties(value: string, userAgent: string): string {
   try {
     const decoded = JSON.parse(Buffer.from(value, "base64").toString("utf8")) as Record<string, unknown>;
-    if (!decoded || typeof decoded !== "object" || Array.isArray(decoded)) return value;
+    if (!decoded || typeof decoded !== "object" || Array.isArray(decoded)) {
+      warnShapeMismatch("X-Super-Properties was not a JSON object");
+      return value;
+    }
 
     decoded.browser = DESKTOP_BROWSER_CLASS;
     decoded.browser_user_agent = userAgent;
     return Buffer.from(JSON.stringify(decoded), "utf8").toString("base64");
-  } catch {
+  } catch (error) {
+    warnShapeMismatch(`X-Super-Properties could not be decoded (${error instanceof Error ? error.message : String(error)})`);
     return value;
   }
+}
+
+function warnShapeMismatch(reason: string): void {
+  if (warnedAboutShapeMismatch) return;
+  warnedAboutShapeMismatch = true;
+  console.warn(
+    `[PulseCord] Discord changed the shape of a request PulseCord depends on for desktop media identity: ${reason}. Screen/voice sharing may be misdetected as a browser client.`
+  );
 }
