@@ -12,7 +12,7 @@ import {
 } from "../shared/contracts";
 import { installDesktopGatewayIdentity } from "./desktop-identity";
 
-installDesktopGatewayIdentity();
+installDesktopGatewayIdentity(navigator.userAgent);
 
 const bridge: NativeBridge = Object.freeze({
   getEnvironment: () => ipcRenderer.invoke(IPC.environment),

@@ -59,6 +59,9 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
 - compartilhamento de tela por seletor nativo do PulseCord, limitado a pedidos
   com gesto do usuário no Discord confiável; no Windows, o áudio do sistema é
   fornecido quando solicitado pelo Discord.
+- identidade desktop coerente na janela, sessão, API e Gateway, permitindo que
+  o Discord habilite os fluxos de câmera e compartilhamento antes de solicitar
+  as permissões nativas.
 
 ## Funcionalidades em andamento
 
@@ -97,6 +100,10 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
   validação ponta a ponta de iniciar e assistir uma transmissão ainda requer uma
   conta autenticada em canal de voz e outro participante transmitindo. Ela não
   é simulada nem afirmada como concluída sem esse cenário real.
+- Antes desta rodada, a janela e a sessão mantinham um User-Agent de
+  Electron/PulseCord enquanto apenas parte dos metadados dizia “Discord Client”.
+  Essa inconsistência fazia o Discord exibir “navegador incompatível” e bloquear
+  câmera/compartilhamento antes de acionar as APIs nativas.
 - O antigo launcher PowerShell falhava em 28/07/2026 ao resolver o caminho de
   `electron.exe`; ele foi removido e substituído pelo atalho direto ao
   executável empacotado.

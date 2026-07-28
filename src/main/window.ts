@@ -8,9 +8,10 @@ const DISCORD_APP_URL = "https://discord.com/app";
 
 interface WindowOptions {
   onRendererCrash(reason: string): void;
+  userAgent: string;
 }
 
-export function createMainWindow({ onRendererCrash }: WindowOptions): BrowserWindow {
+export function createMainWindow({ onRendererCrash, userAgent }: WindowOptions): BrowserWindow {
   const developmentIcon = path.join(app.getAppPath(), "build", "icon.png");
 
   const window = new BrowserWindow({
@@ -37,6 +38,7 @@ export function createMainWindow({ onRendererCrash }: WindowOptions): BrowserWin
 
   Menu.setApplicationMenu(null);
   hardenWindow(window);
+  window.webContents.setUserAgent(userAgent);
 
   const repairInvalidZoom = (): void => {
     const zoomFactor = window.webContents.getZoomFactor();

@@ -16,7 +16,7 @@ import {
   type ShortcutBinding,
   type RuntimeEnvironment
 } from "../shared/contracts";
-import { configureDesktopIdentity } from "./desktop-identity";
+import { configureDesktopIdentity, createDesktopUserAgent } from "./desktop-identity";
 import { RecoveryStore } from "./recovery-store";
 import { isTrustedIpcSender, configureSession } from "./security";
 import { SettingsStore } from "./settings-store";
@@ -29,6 +29,8 @@ let mainWindow: BrowserWindow | undefined;
 
 app.setName("PulseCord");
 if (process.platform === "win32") app.setAppUserModelId("app.pulsecord.desktop");
+const desktopUserAgent = createDesktopUserAgent(app.getVersion());
+app.userAgentFallback = desktopUserAgent;
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 if (!hasSingleInstanceLock) {
@@ -53,12 +55,13 @@ if (!hasSingleInstanceLock) {
     }
     registerIpc(settings, shortcuts);
     configureSession(session.defaultSession, () => mainWindow);
-    configureDesktopIdentity(session.defaultSession);
+    configureDesktopIdentity(session.defaultSession, desktopUserAgent);
 
     const openWindow = (): void => {
       if (mainWindow && !mainWindow.isDestroyed()) return;
 
       mainWindow = createMainWindow({
+        userAgent: desktopUserAgent,
         onRendererCrash: (reason) => {
           void handleRendererCrash(recovery, reason);
         }

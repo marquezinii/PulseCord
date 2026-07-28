@@ -2,9 +2,9 @@ import { contextBridge, type ExecutionScript } from "electron";
 
 const GATEWAY_BROWSER_CLASS = "Discord Client";
 
-export function installDesktopGatewayIdentity(): void {
+export function installDesktopGatewayIdentity(userAgent: string): void {
   contextBridgeExecute({
-    func: (browserClass: string) => {
+    func: (browserClass: string, desktopUserAgent: string) => {
       const marker = Symbol.for("pulsecord.desktop-identity");
       const prototype = WebSocket.prototype as WebSocket & Record<PropertyKey, unknown>;
       if (prototype[marker] === true) return;
@@ -27,6 +27,7 @@ export function installDesktopGatewayIdentity(): void {
 
               if (payload.op === 2 && payload.d?.properties) {
                 payload.d.properties.browser = browserClass;
+                payload.d.properties.browser_user_agent = desktopUserAgent;
                 outgoing = JSON.stringify(payload);
               }
             }
@@ -38,7 +39,7 @@ export function installDesktopGatewayIdentity(): void {
         }
       });
     },
-    args: [GATEWAY_BROWSER_CLASS]
+    args: [GATEWAY_BROWSER_CLASS, userAgent]
   });
 }
 
