@@ -25,12 +25,14 @@ export function configureSession(session: Session, getMainWindow: () => BrowserW
 async function chooseDisplaySource(parent: BrowserWindow | undefined): Promise<Electron.DesktopCapturerSource | undefined> {
   const sources = await desktopCapturer.getSources({ types: ["screen", "window"], thumbnailSize: { width: 480, height: 270 }, fetchWindowIcons: true });
   if (!sources.length) return undefined;
-  const data = sources.map((source, index) => ({ id: source.id, kind: source.id.startsWith("screen:") ? "screen" : "window", name: source.name || `Fonte ${index + 1}`, thumbnail: source.thumbnail.toDataURL() }));
+  const toPickerSources = (items: readonly Electron.DesktopCapturerSource[]) => items.map((source, index) => ({ id: source.id, kind: source.id.startsWith("screen:") ? "screen" : "window", name: source.name || `Fonte ${index + 1}`, thumbnail: source.thumbnail.toDataURL() }));
+  const data = toPickerSources(sources);
   const byId = new Map(sources.map((source) => [source.id, source]));
   return new Promise((resolve) => {
     const picker = new BrowserWindow({ width: 930, height: 670, minWidth: 740, minHeight: 520, show: false, backgroundColor: "#17151f", title: "Compartilhar tela — PulseCord", ...(parent && !parent.isDestroyed() ? { parent, modal: true } : {}), webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, preload: path.join(__dirname, "display-picker.cjs") } });
     let settled = false;
-    const finish = (id?: string): void => { if (settled) return; settled = true; ipcMain.removeListener(PICKER_READY, onReady); ipcMain.removeListener(PICKER_CHOOSE, onChoose); ipcMain.removeListener(PICKER_CANCEL, onCancel); if (!picker.isDestroyed()) picker.close(); resolve(id ? byId.get(id) : undefined); };
+    const previewTimer = setInterval(() => { void desktopCapturer.getSources({ types: ["screen", "window"], thumbnailSize: { width: 480, height: 270 }, fetchWindowIcons: true }).then((latest) => { if (!settled && !picker.isDestroyed()) picker.webContents.send(PICKER_SOURCES, toPickerSources(latest)); }).catch(() => undefined); }, 900);
+    const finish = (id?: string): void => { if (settled) return; settled = true; clearInterval(previewTimer); ipcMain.removeListener(PICKER_READY, onReady); ipcMain.removeListener(PICKER_CHOOSE, onChoose); ipcMain.removeListener(PICKER_CANCEL, onCancel); if (!picker.isDestroyed()) picker.close(); resolve(id ? byId.get(id) : undefined); };
     const owns = (sender: Electron.WebContents): boolean => sender.id === picker.webContents.id;
     const onReady = (event: Electron.IpcMainEvent): void => { if (owns(event.sender)) picker.webContents.send(PICKER_SOURCES, data); };
     const onChoose = (event: Electron.IpcMainEvent, id: unknown): void => { if (owns(event.sender) && typeof id === "string" && byId.has(id)) finish(id); };

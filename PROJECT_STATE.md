@@ -58,7 +58,8 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
   em `outputs\win-unpacked\pulsecord.exe`, sem PowerShell ou processo auxiliar;
 - verificação clean-room disponível em `npm run verify:independence`.
 - compartilhamento de tela por seletor próprio do PulseCord, com abas para
-  telas e aplicativos, miniaturas capturadas localmente e escolha explícita;
+  telas e aplicativos, miniaturas locais atualizadas enquanto o seletor está
+  aberto e escolha explícita;
   no Windows, o áudio do sistema é fornecido quando solicitado pelo Discord.
 - gravador de atalhos aceita teclas simples e combinações, inclusive letras,
   números da fileira superior e teclado numérico, sujeitos à disponibilidade do
