@@ -106,7 +106,16 @@ Documentação de governança (`AI_RULES.md` e documentos correlatos) e
 
 ## Validação mínima
 
-Para mudanças de código TypeScript/Electron, executar ao menos `npm run check`;
-incluir `npm run build` e `npm run package:dir` quando a mudança afetar pacote,
-processo principal, inicialização ou recursos. Para documentação, validar o
-diff e a coerência com a árvore e o estado Git atuais.
+Para mudanças de código TypeScript/Electron, executar ao menos `npm run check`
+(typecheck, suíte de testes em `tests/` via `npm run test`, e verificação
+clean-room, nessa ordem); incluir `npm run build` e `npm run package:dir`
+quando a mudança afetar pacote, processo principal, inicialização ou
+recursos. Para documentação, validar o diff e a coerência com a árvore e o
+estado Git atuais.
+
+Toda lógica pura e testável sem um runtime Electron real (validadores em
+`shared/contracts.ts`, `SettingsStore`, o motor `PulseCore`, funções puras do
+main process) deve ganhar cobertura de teste em `tests/` ao ser criada ou
+alterada de forma relevante. Testes vivem em `tests/`, espelhando a estrutura
+de `src/`, e rodam via `node --test` sobre um bundle esbuild (`npm run
+test`); não é necessário um runtime Electron real para rodá-los.

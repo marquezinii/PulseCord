@@ -16,19 +16,22 @@
   "main": "dist/main.cjs",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "check": "tsc --noEmit && npm run verify:independence",
+    "check": "tsc --noEmit && npm run test && npm run verify:independence",
     "dev": "npm run build && electron .",
     "package:dir": "npm run build && electron-builder --dir",
     "safe-mode": "npm run build && electron . --safe-mode",
     "shortcut:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-shortcut.ps1",
     "start": "npm run dev",
+    "test": "node scripts/test.mjs",
     "verify:independence": "node scripts/verify-clean-room.mjs"
   },
   "devDependencies": {
+    "@types/jsdom": "^28.0.3",
     "@types/node": "^25.9.1",
     "electron": "^41.7.1",
     "electron-builder": "^26.8.1",
     "esbuild": "^0.28.1",
+    "jsdom": "^30.0.0",
     "typescript": "^6.0.3"
   },
   "engines": {
@@ -60,19 +63,25 @@
       "target": [
         {
           "target": "dir",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
     "linux": {
       "icon": "build/icon.png",
       "category": "Network",
-      "target": ["dir"]
+      "target": [
+        "dir"
+      ]
     },
     "mac": {
       "icon": "build/icon.png",
       "category": "public.app-category.social-networking",
-      "target": ["dir"]
+      "target": [
+        "dir"
+      ]
     }
   }
 }

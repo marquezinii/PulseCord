@@ -61,3 +61,18 @@ The Windows desktop shortcut targets the unpacked `pulsecord.exe` directly. Deve
 ## Persistence and recovery
 
 Settings are sanitized against a versioned schema, serialized through a transaction queue, and written atomically inside Electron's user-data directory. Two renderer failures within two minutes trigger a relaunch in safe mode. After one stable minute, the crash counter resets.
+
+## Testing
+
+`tests/` mirrors `src/`'s layout and runs on Node's built-in test runner (`node --test`), not a third-party test framework. `scripts/test.mjs` bundles every `tests/**/*.test.ts` file with esbuild (the same tool `scripts/build.mjs` uses) and hands the result to `node --test`, so no Electron runtime is needed to run the suite. `npm run check` runs it automatically, between the typecheck and the clean-room verification.
+
+What is covered, and how:
+
+- **`shared/contracts.ts`** — every validator and `sanitizeSettings`, run directly as pure functions.
+- **`main/security.ts`, `main/desktop-identity.ts`** — the pure/exported functions, plus `configureDesktopIdentity` exercised against a hand-written fake `Session` object (no real Electron `Session` is constructible outside a running app).
+- **`main/settings-store.ts`** — fully exercised against a real temporary directory on disk (it only depends on `node:fs/promises`, not Electron), including the corrupt-file quarantine and its rotation.
+- **`renderer/pulsecore/`** — `EventBus` and `CommandRegistry` as pure logic; `PluginRuntime` and `buildPluginContext` against a `jsdom` document (installed as ambient globals for the duration of a test) and an in-memory `FakeBridge` standing in for the preload bridge. These tests are what hold the engine's core promises to account: capability gating, resource cleanup ordering, and that a runtime crash in one plugin cannot affect another.
+
+What is intentionally not unit-tested: `main/index.ts` (wires everything together and calls `app.whenReady()` at module load — only safe to run inside a real Electron process) and the Electron-native pieces of `main/startup.ts` and `main/security.ts` (`chooseDisplaySource`'s `BrowserWindow`/`desktopCapturer` calls, `app.setLoginItemSettings`). These stay covered by the manual packaged-app smoke check described in the validation rules, not by `tests/`.
+
+`tests/helpers/electron-stub.ts` replaces the real `electron` package at test-bundle time (aliased in `scripts/test.mjs`) — the real package only resolves to a usable API inside an actual Electron process, and under plain Node returns just a path string, which is useless to import and can even throw if its postinstall step didn't run.

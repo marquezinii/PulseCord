@@ -157,10 +157,40 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
 
 ## Validações conhecidas
 
-- `npm run check`: typecheck e verificação da independência clean-room;
+- `npm run check`: typecheck, suíte de testes (`npm run test`) e verificação
+  da independência clean-room, nessa ordem;
+- `npm run test`: roda `tests/**/*.test.ts` (68 testes) via `node --test`
+  sobre um bundle esbuild; não precisa de um runtime Electron real;
 - `npm run build`: gera os bundles locais em `dist/`;
 - `npm run package:dir`: gera pacote local unpacked em `outputs/`;
 - `npm run shortcut:windows`: cria/atualiza o atalho de desenvolvimento.
+
+## Cobertura de testes
+
+Primeira rodada de testes do projeto (antes não havia nenhum), em `tests/`,
+espelhando `src/`: validadores e `sanitizeSettings` de `shared/contracts.ts`;
+`isTrustedIpcSender`/`isTrustedDiscordUrl` e o rewrite de identidade de
+`X-Super-Properties` no main process; `SettingsStore` completo contra um
+diretório temporário real em disco (CRUD de atalhos, tema, dados por plugin,
+quarentena de arquivo corrompido e sua rotação); e o motor `PulseCore`
+completo (`EventBus`, `CommandRegistry`, `PluginRuntime`) contra um documento
+`jsdom` e uma bridge falsa — cobrindo especificamente as garantias centrais
+do motor: isolamento de capacidades, ordem de limpeza de recursos, e que uma
+falha em runtime de um plugin não afeta os demais.
+
+Escrever os testes de `isCustomCss` revelou um bug real de produção: uma
+URL `blob:` legítima (que sempre embute a origem que a criou, ex.
+`blob:https://discord.com/<uuid>`) era rejeitada porque a checagem genérica
+contra `//` rodava sobre o CSS inteiro, incluindo o conteúdo já validado de
+dentro de `url(...)`. Corrigido em `shared/contracts.ts`: a checagem de `//`
+agora roda apenas fora dos trechos `url(...)` já validados contra a lista
+de esquemas permitidos (`data:`, `blob:`, `#`).
+
+Não testado por design (exigiria um processo Electron real em execução):
+`main/index.ts` (chama `app.whenReady()` no carregamento do módulo) e as
+chamadas Electron-nativas dentro de `chooseDisplaySource` e
+`disablePulseCordAutoStart`. Essas partes continuam cobertas pelo smoke test
+manual do app empacotado descrito na validação mínima.
 
 ## Próximos passos
 

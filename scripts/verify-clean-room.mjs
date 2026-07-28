@@ -14,7 +14,7 @@ const forbiddenFragments = [
   ["a", "r", "m", "c", "o", "r", "d"].join(""),
   ["w", "e", "b", "c", "o", "r", "d"].join("")
 ];
-const targets = ["src", "package.json", "package-lock.json", "scripts/build.mjs"];
+const targets = ["src", "tests", "package.json", "package-lock.json", "scripts/build.mjs", "scripts/test.mjs"];
 const violations = [];
 
 for (const target of targets) {

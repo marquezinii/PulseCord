@@ -174,12 +174,23 @@ export function isCustomCss(value: unknown): value is string {
   const comparable = decodeCssEscapes(value.replace(/\/\*[\s\S]*?\*\//g, ""));
   if (/@import\b/i.test(comparable)) return false;
   if (/(?:-webkit-)?image-set\s*\(/i.test(comparable)) return false;
-  if (/(?:https?:)?\/\//i.test(comparable)) return false;
 
+  // Validate every url(...) body against the data:/blob:/# allowlist, then
+  // scan everything *outside* those bodies for a bare "//" (protocol-relative
+  // or embedded remote reference). Scanning the whole string for "//" would
+  // also reject a legitimate blob: URL, since blob URLs always embed the
+  // origin they were created from (e.g. "blob:https://discord.com/<uuid>").
+  let outsideUrls = "";
+  let cursor = 0;
   for (const match of comparable.matchAll(/url\s*\(\s*([^)]*?)\s*\)/gi)) {
     const target = (match[1] ?? "").trim().replace(/^(['"])(.*)\1$/, "$2").trim().toLowerCase();
     if (!target.startsWith("data:") && !target.startsWith("blob:") && !target.startsWith("#")) return false;
+    outsideUrls += comparable.slice(cursor, match.index);
+    cursor = (match.index ?? 0) + match[0].length;
   }
+  outsideUrls += comparable.slice(cursor);
+
+  if (/(?:https?:)?\/\//i.test(outsideUrls)) return false;
 
   return true;
 }
