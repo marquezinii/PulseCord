@@ -39,13 +39,13 @@ npm run build
 npm start
 ```
 
-Create or refresh the desktop shortcut:
+Create or refresh the desktop shortcut after packaging:
 
 ```powershell
 npm run shortcut:windows
 ```
 
-The shortcut points to `scripts/dev-launch.ps1`, not to a frozen executable. Every launch therefore builds and opens the current checkout. The hidden launcher exits as soon as the PulseCord window is visible, so no npm, Command Prompt, or PowerShell window remains in the taskbar.
+The `PulseCord` desktop shortcut opens `outputs/win-unpacked/pulsecord.exe` directly. It does not start PowerShell, npm, Command Prompt, or an intermediary launcher. Run `npm run package:dir` after local code changes, then refresh the shortcut if its location or icon changed.
 
 ## Project map
 

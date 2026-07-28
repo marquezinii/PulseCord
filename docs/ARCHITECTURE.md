@@ -48,7 +48,7 @@ The project-supplied artwork is the PulseCord desktop and in-app identity. A rev
 
 ## Development launcher
 
-The Windows desktop shortcut starts a hidden PowerShell bootstrapper. That bootstrapper installs dependencies only when required, runs the clean-room build directly with Node, starts Electron directly, and exits after detecting the visible PulseCord window. npm and console hosts do not remain as parents of the running application.
+The Windows desktop shortcut targets the unpacked `pulsecord.exe` directly. Development packaging is an explicit maintenance action (`npm run package:dir`), rather than work performed while the user waits to open the app. This avoids console-host windows, fragile process-name detection, and a second launcher process; the visible application is the native PulseCord executable itself.
 
 ## Persistence and recovery
 

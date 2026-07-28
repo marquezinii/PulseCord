@@ -53,8 +53,8 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
   implementação privada;
 - PulsePanel, branding e opção para acompanhar o ícone Home do Discord;
 - persistência atômica, recuperação de falha do renderer e tela offline;
-- launcher `scripts/dev-launch.ps1` e atalho `PulseCord Dev.lnk`, que usam o
-  workspace atual sem manter consoles visíveis;
+- atalho `PulseCord.lnk` que inicia diretamente o executável nativo empacotado
+  em `outputs\win-unpacked\pulsecord.exe`, sem PowerShell ou processo auxiliar;
 - verificação clean-room disponível em `npm run verify:independence`.
 - compartilhamento de tela por seletor nativo do PulseCord, limitado a pedidos
   com gesto do usuário no Discord confiável; no Windows, o áudio do sistema é
@@ -62,8 +62,7 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
 
 ## Funcionalidades em andamento
 
-- Substituição integral da identidade visual pela marca transparente fornecida
-  em 28/07/2026, incluindo fontes de ícone, pacote, atalho, app e README.
+- Nenhuma implementação de produto em andamento neste momento.
 
 ## Planejado
 
@@ -83,6 +82,9 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
 - A captura de tela usa exclusivamente a API pública do Electron. O seletor
   atual oferece monitores inteiros; compartilhamento de janela/aplicativo fica
   planejado para evolução posterior.
+- O atalho de desenvolvimento é uma inicialização direta do executável
+  empacotado. Após alterações no código, `npm run package:dir` deve ser usado
+  antes de testar pelo atalho; o próprio atalho nunca executa PowerShell.
 - Plugins externos permanecem desabilitados por projeto; a área Plugins informa
   que o recurso está em construção.
 - Não há instalador ou release pública nesta fase; o repositório publica fonte.
@@ -95,11 +97,14 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
   validação ponta a ponta de iniciar e assistir uma transmissão ainda requer uma
   conta autenticada em canal de voz e outro participante transmitindo. Ela não
   é simulada nem afirmada como concluída sem esse cenário real.
+- O antigo launcher PowerShell falhava em 28/07/2026 ao resolver o caminho de
+  `electron.exe`; ele foi removido e substituído pelo atalho direto ao
+  executável empacotado.
 
 ## Git e publicação
 
-- `main` aponta para `0b0695d`; `dev/proxima-versao` contém o commit de
-  governança `2667281` e recebe o desenvolvimento atual.
+- `main` aponta para `0b0695d`; `dev/proxima-versao` recebe a governança,
+  identidade visual, captura de tela e inicializador nativo atuais.
 - A antiga branch `codex/clean-room-core` foi integrada e removida local/remota.
 - A PR #1 foi integrada em `main`.
 - Todo desenvolvimento futuro ocorre em `dev/proxima-versao`.
