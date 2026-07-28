@@ -16,8 +16,9 @@ First-party plugins are trusted source code reviewed in this repository, but Pul
 ## Controls in 0.2
 
 - HTTPS origin allowlist for top-level navigation and permission requests.
-- One consistent PulseCord-owned desktop-compatible User-Agent for the trusted
-  Discord session, while preserving the explicit `PulseCord/<version>` token.
+- A PulseCord-owned Chromium-compatible User-Agent for the trusted Discord page,
+  while API and Gateway metadata classify the session as desktop without
+  advertising or emulating the proprietary `DiscordNative` bridge.
 - Display-capture requests require a user gesture from a trusted Discord origin and
   an explicit screen selection in the native PulseCord picker.
 - System-browser handoff for external links.

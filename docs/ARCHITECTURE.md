@@ -8,7 +8,7 @@ The main process owns the window, local settings, recovery records, permissions,
 
 The main window loads only the official Discord web application. External navigation is opened in the system browser. Webviews are blocked, Node integration is disabled, context isolation is enabled, and the renderer is sandboxed.
 
-Desktop identity belongs to PulseCord itself. The shell uses one consistent desktop-compatible User-Agent for the Electron fallback, Discord session, main window, API metadata, and Gateway metadata. It retains an explicit `PulseCord/<version>` product token and does not expose or imitate another desktop client's private native bridge.
+Desktop identity belongs to PulseCord itself. The Discord page receives a Chromium-compatible User-Agent with an explicit `PulseCord/<version>` product token, so camera and display capture follow the standards-based WebRTC path implemented by Electron. The API and Gateway metadata independently classify the session as `Discord Client`, preserving desktop presence without advertising Discord's proprietary `DiscordNative` bridge. PulseCord neither exposes nor imitates another desktop client's private native bridge.
 
 Display sharing is implemented through Electron's supported display-media request handler. Only a user-initiated request from a trusted Discord origin can open the PulseCord-owned native display picker. The handler enumerates screens, grants only the screen explicitly selected by the user, and supplies Windows system audio only when Discord requested it. Received Discord streams remain ordinary Chromium/WebRTC media inside the trusted page; PulseCord does not proxy, inspect, or persist their media.
 

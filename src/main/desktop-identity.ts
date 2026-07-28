@@ -7,14 +7,11 @@ const DESKTOP_BROWSER_CLASS = "Discord Client";
 
 export function createDesktopUserAgent(appVersion: string): string {
   const chromeVersion = process.versions.chrome || "140.0.0.0";
-  const electronVersion = process.versions.electron || "41.0.0";
 
   return [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
     "AppleWebKit/537.36 (KHTML, like Gecko)",
-    `Discord/${appVersion}`,
     `Chrome/${chromeVersion}`,
-    `Electron/${electronVersion}`,
     "Safari/537.36",
     `PulseCord/${appVersion}`
   ].join(" ");

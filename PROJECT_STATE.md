@@ -59,9 +59,9 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
 - compartilhamento de tela por seletor nativo do PulseCord, limitado a pedidos
   com gesto do usuário no Discord confiável; no Windows, o áudio do sistema é
   fornecido quando solicitado pelo Discord.
-- identidade desktop coerente na janela, sessão, API e Gateway, permitindo que
-  o Discord habilite os fluxos de câmera e compartilhamento antes de solicitar
-  as permissões nativas.
+- identidade de mídia compatível com Chromium na janela e na sessão, mantendo a
+  classificação desktop na API e no Gateway sem anunciar a ponte proprietária
+  `DiscordNative`.
 
 ## Funcionalidades em andamento
 
@@ -96,14 +96,18 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
 
 ## Bugs conhecidos e validação pendente
 
-- O executável empacotado inicia e a integração de captura compila, mas a
-  validação ponta a ponta de iniciar e assistir uma transmissão ainda requer uma
-  conta autenticada em canal de voz e outro participante transmitindo. Ela não
-  é simulada nem afirmada como concluída sem esse cenário real.
-- Antes desta rodada, a janela e a sessão mantinham um User-Agent de
-  Electron/PulseCord enquanto apenas parte dos metadados dizia “Discord Client”.
-  Essa inconsistência fazia o Discord exibir “navegador incompatível” e bloquear
-  câmera/compartilhamento antes de acionar as APIs nativas.
+- Em 28/07/2026, a conta autenticada entrou no canal `Geral 1` do servidor
+  FiveMCleaner e o compartilhamento foi validado até o seletor nativo do
+  PulseCord, que enumerou `Tela 1` e `Tela 2`; nenhuma transmissão foi iniciada.
+- A causa raiz do bloqueio “Baixe o app” era o User-Agent da página anunciar
+  tokens `Discord/*` e `Electron/*`. Isso direcionava a interface para o caminho
+  proprietário que exige `window.DiscordNative`, ponte que não existe e não
+  deve ser imitada na arquitetura clean-room. A página agora usa a rota WebRTC
+  compatível com Chromium; API e Gateway continuam classificados como desktop.
+- O Windows não apresentou dispositivo PnP das classes `Camera` ou `Image` na
+  validação de 28/07/2026. Portanto, o controle de câmera permanece
+  indisponível neste computador por ausência de hardware/driver detectável, não
+  por bloqueio de navegador do PulseCord.
 - O antigo launcher PowerShell falhava em 28/07/2026 ao resolver o caminho de
   `electron.exe`; ele foi removido e substituído pelo atalho direto ao
   executável empacotado.
