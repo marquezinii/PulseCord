@@ -1,5 +1,5 @@
 import discordSymbol from "../../assets/discord-symbol.svg";
-import pulseCordLogo from "../../assets/pulsecord-logo.png";
+import pulsePanelArt from "../../assets/pulsepanel-art.png";
 import type { AppSettings, NativeBridge, RuntimeEnvironment } from "../shared/contracts";
 import {
   OPEN_PULSECORD_SETTINGS_EVENT,
@@ -31,7 +31,7 @@ export async function mountControlCenter(
   launcher.type = "button";
   launcher.title = "Abrir PulsePanel";
   launcher.setAttribute("aria-label", "Abrir configurações do PulseCord");
-  launcher.innerHTML = `<img src="${escapeAttribute(pulseCordLogo)}" alt="" />`;
+  launcher.innerHTML = `<img src="${escapeAttribute(pulsePanelArt)}" alt="" />`;
 
   const panel = document.createElement("section");
   panel.className = "panel";
@@ -40,7 +40,7 @@ export async function mountControlCenter(
   panel.innerHTML = `
     <header class="topbar">
       <div class="identity">
-        <img class="brand-logo" src="${escapeAttribute(pulseCordLogo)}" alt="" />
+        <img class="brand-logo" src="${escapeAttribute(pulsePanelArt)}" alt="" />
         <span class="identity-copy"><strong>PulsePanel</strong><small>PulseCore ${escapeHtml(environment.appVersion)}</small></span>
       </div>
       <button class="icon-button close" type="button" aria-label="Fechar">×</button>
@@ -173,8 +173,8 @@ const CONTROL_CENTER_CSS = `
     display: grid; place-items: center; box-shadow: 0 14px 38px rgba(0,0,0,.42); transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
   }
   .launcher img { width: 100%; height: 100%; object-fit: cover; }
-  .launcher:hover, .launcher.active { transform: translateY(-2px); border-color: rgba(239,68,85,.74); box-shadow: 0 17px 42px rgba(0,0,0,.48), 0 0 0 3px rgba(239,68,85,.08); }
-  .launcher:focus-visible, button:focus-visible { outline: 2px solid #f05a70; outline-offset: 2px; }
+  .launcher:hover, .launcher.active { transform: translateY(-2px); border-color: rgba(167,139,250,.74); box-shadow: 0 17px 42px rgba(0,0,0,.48), 0 0 0 3px rgba(139,92,246,.12); }
+  .launcher:focus-visible, button:focus-visible { outline: 2px solid #a78bfa; outline-offset: 2px; }
   .panel {
     pointer-events: auto; position: fixed; right: 18px; bottom: 80px; width: min(408px, calc(100vw - 36px));
     max-height: calc(100vh - 104px); overflow: auto; border: 1px solid rgba(255,255,255,.09); border-radius: 22px;
@@ -191,8 +191,8 @@ const CONTROL_CENTER_CSS = `
   .icon-button { width: 34px; height: 34px; border: 0; border-radius: 10px; color: #8d94a3; background: transparent; cursor: pointer; font-size: 23px; line-height: 1; }
   .icon-button:hover { color: white; background: rgba(255,255,255,.065); }
   .hero { position: relative; overflow: hidden; padding: 14px 20px 19px; }
-  .hero::after { content: ""; position: absolute; width: 190px; height: 190px; right: -105px; top: -80px; border-radius: 50%; background: radial-gradient(circle, rgba(229,48,69,.16), transparent 68%); pointer-events: none; }
-  .eyebrow { color: #e77687; font-size: 9.5px; font-weight: 760; letter-spacing: .13em; }
+  .hero::after { content: ""; position: absolute; width: 220px; height: 220px; right: -105px; top: -80px; border-radius: 50%; background: radial-gradient(circle, rgba(139,92,246,.25), transparent 68%); pointer-events: none; }
+  .eyebrow { color: #bba4ff; font-size: 9.5px; font-weight: 760; letter-spacing: .13em; }
   h2 { margin: 7px 0 7px; color: #f7f7f9; font-size: 25px; font-weight: 700; line-height: 1.08; letter-spacing: -.04em; }
   .hero p { max-width: 325px; margin: 0; color: #9ca3b1; font-size: 11.5px; line-height: 1.5; }
   .service-badge { display: flex; align-items: center; gap: 10px; margin: 0 14px 13px; padding: 10px 11px; border: 1px solid rgba(88,101,242,.25); border-radius: 13px; background: rgba(88,101,242,.075); }
@@ -204,13 +204,13 @@ const CONTROL_CENTER_CSS = `
   .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #3ba55d; box-shadow: 0 0 0 3px rgba(59,165,93,.11); }
   .quick-links { display: grid; gap: 7px; margin: 0 14px 15px; }
   .settings-card { width: 100%; padding: 11px 12px; display: flex; align-items: center; gap: 11px; border: 1px solid rgba(255,255,255,.065); border-radius: 13px; text-align: left; background: #181a21; cursor: pointer; transition: .15s ease; }
-  .settings-card:hover { border-color: rgba(229,48,69,.34); background: #1c1f27; transform: translateY(-1px); }
-  .settings-icon { flex: 0 0 auto; width: 35px; height: 35px; display: grid; place-items: center; border-radius: 10px; color: #ef9ba8; background: rgba(229,48,69,.13); }
+  .settings-card:hover { border-color: rgba(139,92,246,.44); background: #1c1a28; transform: translateY(-1px); }
+  .settings-icon { flex: 0 0 auto; width: 35px; height: 35px; display: grid; place-items: center; border-radius: 10px; color: #c4b5fd; background: rgba(139,92,246,.16); }
   .settings-icon svg { width: 20px; height: 20px; }
   .settings-card > span:nth-child(2) { flex: 1; min-width: 0; display: grid; gap: 2px; }
   .settings-card b { font-size: 11.5px; font-weight: 660; }
   .settings-card small { color: #8f96a5; font-size: 9.5px; }
-  .settings-card > i { color: #a75563; font-size: 23px; font-style: normal; line-height: 1; }
+  .settings-card > i { color: #a78bfa; font-size: 23px; font-style: normal; line-height: 1; }
   .safe-banner { display: grid; gap: 4px; margin: 0 14px 12px; padding: 12px; border-radius: 13px; background: rgba(236,169,73,.1); border: 1px solid rgba(236,169,73,.28); }
   .safe-banner b { color: #f0bd70; font-size: 11.5px; }
   .safe-banner span { color: #b6a78e; font-size: 9.5px; }

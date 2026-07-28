@@ -511,8 +511,6 @@ function isClearKey(event: KeyboardEvent): boolean {
 }
 
 function keyboardAccelerator(event: KeyboardEvent): string | undefined {
-  if (!hasModifier(event)) return undefined;
-
   const modifiers: string[] = [];
   if (event.ctrlKey) modifiers.push("Control");
   if (event.altKey) modifiers.push("Alt");
@@ -520,12 +518,13 @@ function keyboardAccelerator(event: KeyboardEvent): string | undefined {
   if (event.metaKey) modifiers.push("Super");
 
   const key = acceleratorKey(event.code);
-  return key ? `${modifiers.join("+")}+${key}` : undefined;
+  return key ? [...modifiers, key].join("+") : undefined;
 }
 
 function acceleratorKey(code: string): string | undefined {
   if (/^Key[A-Z]$/.test(code)) return code.slice(3);
   if (/^Digit[0-9]$/.test(code)) return code.slice(5);
+  if (/^Numpad[0-9]$/.test(code)) return `num${code.slice(6)}`;
   if (/^F(?:[1-9]|1[0-9]|2[0-4])$/.test(code)) return code;
 
   return {

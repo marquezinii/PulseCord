@@ -42,9 +42,18 @@ await Promise.all([
       ".png": "dataurl",
       ".svg": "dataurl"
     }
+  }),
+  build({
+    ...shared,
+    entryPoints: [path.join(root, "src/preload/display-picker.ts")],
+    outfile: path.join(dist, "display-picker.cjs"),
+    platform: "node",
+    format: "cjs",
+    target: "chrome140"
   })
 ]);
 
 await cp(path.join(root, "static/offline.html"), path.join(dist, "offline.html"));
 await cp(path.join(root, "assets/pulsecord-logo.png"), path.join(dist, "pulsecord-logo.png"));
+await cp(path.join(root, "assets/pulsepanel-art.png"), path.join(dist, "pulsepanel-art.png"));
 console.log(`PulseCord ${packageJson.version} built from the clean-room source tree.`);

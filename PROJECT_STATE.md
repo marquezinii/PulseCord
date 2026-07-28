@@ -51,14 +51,18 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
 - atalhos globais próprios, com criação, edição, remoção e detecção de conflito;
 - lista padrão de atalhos do Discord preservada quando disponível, sem copiar
   implementação privada;
-- PulsePanel, branding e opção para acompanhar o ícone Home do Discord;
+- PulsePanel com arte exclusiva roxo-azul, acentos roxos e opção para acompanhar
+  o ícone Home do Discord;
 - persistência atômica, recuperação de falha do renderer e tela offline;
 - atalho `PulseCord.lnk` que inicia diretamente o executável nativo empacotado
   em `outputs\win-unpacked\pulsecord.exe`, sem PowerShell ou processo auxiliar;
 - verificação clean-room disponível em `npm run verify:independence`.
-- compartilhamento de tela por seletor nativo do PulseCord, limitado a pedidos
-  com gesto do usuário no Discord confiável; no Windows, o áudio do sistema é
-  fornecido quando solicitado pelo Discord.
+- compartilhamento de tela por seletor próprio do PulseCord, com abas para
+  telas e aplicativos, miniaturas capturadas localmente e escolha explícita;
+  no Windows, o áudio do sistema é fornecido quando solicitado pelo Discord.
+- gravador de atalhos aceita teclas simples e combinações, inclusive letras,
+  números da fileira superior e teclado numérico, sujeitos à disponibilidade do
+  registro global do Windows.
 - identidade de mídia compatível com Chromium na janela e na sessão, mantendo a
   classificação desktop na API e no Gateway sem anunciar a ponte proprietária
   `DiscordNative`.
@@ -82,9 +86,9 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
   modificados sem autorização explícita.
 - O aplicativo usa o Discord oficial na web; integrações de interface dependem
   do DOM público disponível e devem ser tratadas como camada de compatibilidade.
-- A captura de tela usa exclusivamente a API pública do Electron. O seletor
-  atual oferece monitores inteiros; compartilhamento de janela/aplicativo fica
-  planejado para evolução posterior.
+- A captura de tela usa exclusivamente APIs públicas do Electron. O seletor
+  apresenta telas e aplicativos com miniaturas locais; não há cópia de UI ou
+  runtime de outros clientes.
 - O atalho de desenvolvimento é uma inicialização direta do executável
   empacotado. Após alterações no código, `npm run package:dir` deve ser usado
   antes de testar pelo atalho; o próprio atalho nunca executa PowerShell.
@@ -108,6 +112,10 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
   validação de 28/07/2026. Portanto, o controle de câmera permanece
   indisponível neste computador por ausência de hardware/driver detectável, não
   por bloqueio de navegador do PulseCord.
+- A API pública de seleção de mídia do Electron escolhe a fonte de captura, mas
+  não permite ao shell alterar qualidade ou FPS de uma transmissão Discord já
+  ativa. Esses parâmetros continuam sob controle do Discord/WebRTC; o PulseCord
+  não afirma oferecer alteração em tempo real sem uma API pública para isso.
 - O antigo launcher PowerShell falhava em 28/07/2026 ao resolver o caminho de
   `electron.exe`; ele foi removido e substituído pelo atalho direto ao
   executável empacotado.

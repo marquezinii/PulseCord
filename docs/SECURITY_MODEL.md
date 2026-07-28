@@ -20,7 +20,7 @@ First-party plugins are trusted source code reviewed in this repository, but Pul
   while API and Gateway metadata classify the session as desktop without
   advertising or emulating the proprietary `DiscordNative` bridge.
 - Display-capture requests require a user gesture from a trusted Discord origin and
-  an explicit screen selection in the native PulseCord picker.
+  an explicit screen or application selection in the PulseCord picker.
 - System-browser handoff for external links.
 - Webview blocking.
 - Sandboxed renderer with context isolation and no Node integration.
