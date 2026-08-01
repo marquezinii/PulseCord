@@ -26,8 +26,36 @@ export const IPC = {
   homeIconSet: "pulsecord:appearance:home-icon:set",
   welcomeSeen: "pulsecord:welcome:seen",
   openDataFolder: "pulsecord:data:open",
-  relaunch: "pulsecord:app:relaunch"
+  relaunch: "pulsecord:app:relaunch",
+  /** Discord surface -> main: the latest reading of Discord's own unread badges. */
+  activityReport: "pulsecord:activity:report",
+  /** Shell -> main: read the last reading the Discord surface reported. */
+  activitySnapshotGet: "pulsecord:activity:snapshot:get",
+  /** Main -> shell: a fresher reading arrived. */
+  activitySnapshotChanged: "pulsecord:activity:snapshot:changed",
+  /** Shell -> main: show the named shell destination. */
+  shellNavigate: "pulsecord:shell:navigate"
 } as const;
+
+/**
+ * The shell's own destinations. The IDs live here rather than beside the
+ * navigation rail's markup because the main process validates them as IPC
+ * input before it will show or hide the embedded Discord surface.
+ */
+export const SHELL_DESTINATION_IDS = [
+  "discord",
+  "activity",
+  "organization",
+  "automations",
+  "themes",
+  "settings"
+] as const;
+
+export type ShellDestinationId = (typeof SHELL_DESTINATION_IDS)[number];
+
+export function isShellDestinationId(value: unknown): value is ShellDestinationId {
+  return typeof value === "string" && (SHELL_DESTINATION_IDS as readonly string[]).includes(value);
+}
 
 export const BUILTIN_PLUGIN_IDS = [] as const;
 
@@ -88,6 +116,44 @@ export interface RuntimeEnvironment {
   safeMode: boolean;
 }
 
+/**
+ * What PulseCord could observe of Discord's own unread state.
+ *
+ * PulseCord holds no Discord credential and calls no Discord API, so the only
+ * honest source is the badge text Discord itself already rendered in the
+ * embedded surface. That reading is a compatibility layer over a private,
+ * unversioned UI: it can stop matching at any time.
+ *
+ * `mentions: null` therefore means "PulseCord could not read this", which is a
+ * different fact from `mentions: 0` ("Discord says there are none"). The two
+ * must never be collapsed — showing a confident zero we did not actually
+ * observe is worse than showing nothing.
+ */
+export interface ActivitySnapshot {
+  mentions: number | null;
+  /** When the reading was taken, as epoch milliseconds. */
+  readAt: number;
+}
+
+export const MAX_OBSERVED_MENTIONS = 9999;
+
+export function isActivitySnapshot(value: unknown): value is ActivitySnapshot {
+  if (!isRecord(value)) return false;
+  const { mentions, readAt } = value;
+  const mentionsValid =
+    mentions === null ||
+    (typeof mentions === "number" &&
+      Number.isInteger(mentions) &&
+      mentions >= 0 &&
+      mentions <= MAX_OBSERVED_MENTIONS);
+  return mentionsValid && typeof readAt === "number" && Number.isFinite(readAt) && readAt >= 0;
+}
+
+/** A reading that says, explicitly, that nothing could be observed. */
+export function unavailableActivity(readAt: number): ActivitySnapshot {
+  return { mentions: null, readAt };
+}
+
 export interface NativeBridge {
   getEnvironment(): Promise<RuntimeEnvironment>;
   getSettings(): Promise<AppSettings>;
@@ -106,6 +172,8 @@ export interface NativeBridge {
   markWelcomeSeen(): Promise<AppSettings>;
   openDataFolder(): Promise<void>;
   relaunch(safeMode: boolean): Promise<void>;
+  /** Reports what the Discord surface could observe of its own unread state. */
+  reportActivity(snapshot: ActivitySnapshot): void;
 }
 
 export const MAX_SHORTCUT_BINDINGS = 64;

@@ -5,6 +5,7 @@ import {
   IPC,
   isShortcutAction,
   isTrustedDiscordUrl,
+  type ActivitySnapshot,
   type BuiltinPluginId,
   type HomeIconPreference,
   type JsonValue,
@@ -42,7 +43,8 @@ const bridge: NativeBridge = Object.freeze({
   setHomeIcon: (preference: HomeIconPreference) => ipcRenderer.invoke(IPC.homeIconSet, preference),
   markWelcomeSeen: () => ipcRenderer.invoke(IPC.welcomeSeen),
   openDataFolder: () => ipcRenderer.invoke(IPC.openDataFolder),
-  relaunch: (safeMode: boolean) => ipcRenderer.invoke(IPC.relaunch, safeMode)
+  relaunch: (safeMode: boolean) => ipcRenderer.invoke(IPC.relaunch, safeMode),
+  reportActivity: (snapshot: ActivitySnapshot) => ipcRenderer.send(IPC.activityReport, snapshot)
 });
 
 contextBridge.exposeInMainWorld(

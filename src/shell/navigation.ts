@@ -1,27 +1,60 @@
-import type { RuntimeEnvironment } from "../shared/contracts";
+import { SHELL_DESTINATION_IDS, type RuntimeEnvironment, type ShellDestinationId } from "../shared/contracts";
 
 export interface ShellDestination {
-  id: string;
+  id: ShellDestinationId;
   label: string;
   glyph: string;
   /**
-   * Only the Discord surface is built in this milestone. The rest are declared
-   * here so the rail shows the shape of the product, and are explicitly marked
+   * Destinations are switched on one milestone at a time. The rest are
+   * declared here so the rail shows the shape of the product, and are marked
    * unavailable rather than rendered as if they worked.
    */
   available: boolean;
 }
 
-export const SHELL_DESTINATIONS: readonly ShellDestination[] = [
-  { id: "discord", label: "Discord", glyph: chatGlyph(), available: true },
-  { id: "activity", label: "Central de Atividade", glyph: pulseGlyph(), available: false },
-  { id: "organization", label: "Organização", glyph: boardGlyph(), available: false },
-  { id: "automations", label: "Automações", glyph: boltGlyph(), available: false },
-  { id: "themes", label: "Temas", glyph: paletteGlyph(), available: false },
-  { id: "settings", label: "Configurações", glyph: gearGlyph(), available: false }
-];
+const AVAILABLE_DESTINATIONS = new Set<ShellDestinationId>(["discord", "activity"]);
 
-export function mountShellNavigation(target: Document, environment: RuntimeEnvironment | undefined): void {
+const DESTINATION_LABELS: Record<ShellDestinationId, string> = {
+  discord: "Discord",
+  activity: "Central de Atividade",
+  organization: "Organização",
+  automations: "Automações",
+  themes: "Temas",
+  settings: "Configurações"
+};
+
+const DESTINATION_GLYPHS: Record<ShellDestinationId, () => string> = {
+  discord: chatGlyph,
+  activity: pulseGlyph,
+  organization: boardGlyph,
+  automations: boltGlyph,
+  themes: paletteGlyph,
+  settings: gearGlyph
+};
+
+export const SHELL_DESTINATIONS: readonly ShellDestination[] = SHELL_DESTINATION_IDS.map((id) => ({
+  id,
+  label: DESTINATION_LABELS[id],
+  glyph: DESTINATION_GLYPHS[id](),
+  available: AVAILABLE_DESTINATIONS.has(id)
+}));
+
+export interface NavigationOptions {
+  /** The destination shown on first paint. */
+  initial: ShellDestinationId;
+  onSelect(destination: ShellDestinationId): void;
+}
+
+export interface NavigationController {
+  /** Moves the selected state without re-notifying `onSelect`. */
+  setActive(destination: ShellDestinationId): void;
+}
+
+export function mountShellNavigation(
+  target: Document,
+  environment: RuntimeEnvironment | undefined,
+  options: NavigationOptions
+): NavigationController {
   const rail = target.getElementById("pulsecord-nav");
   if (!rail) throw new Error("The shell navigation rail is missing from the document.");
 
@@ -37,6 +70,8 @@ export function mountShellNavigation(target: Document, environment: RuntimeEnvir
   list.className = "destinations";
   list.setAttribute("aria-label", "Áreas do PulseCord");
 
+  const buttons = new Map<ShellDestinationId, HTMLButtonElement>();
+
   for (const destination of SHELL_DESTINATIONS) {
     const button = target.createElement("button");
     button.type = "button";
@@ -47,8 +82,8 @@ export function mountShellNavigation(target: Document, environment: RuntimeEnvir
     if (destination.available) {
       button.title = destination.label;
       button.setAttribute("aria-label", destination.label);
-      button.setAttribute("aria-current", "page");
-      button.classList.add("active");
+      button.addEventListener("click", () => options.onSelect(destination.id));
+      buttons.set(destination.id, button);
     } else {
       button.title = `${destination.label} — em breve`;
       button.setAttribute("aria-label", `${destination.label}, em breve`);
@@ -67,6 +102,18 @@ export function mountShellNavigation(target: Document, environment: RuntimeEnvir
     badge.title = "Modo seguro ativo";
     rail.append(badge);
   }
+
+  const setActive = (destination: ShellDestinationId): void => {
+    for (const [id, button] of buttons) {
+      const active = id === destination;
+      button.classList.toggle("active", active);
+      if (active) button.setAttribute("aria-current", "page");
+      else button.removeAttribute("aria-current");
+    }
+  };
+
+  setActive(options.initial);
+  return { setActive };
 }
 
 function chatGlyph(): string {

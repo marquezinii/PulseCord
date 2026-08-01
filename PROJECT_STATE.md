@@ -15,9 +15,10 @@ Discord real (API, Gateway, nuvem de amigos/servidores/Nitro) continua sendo
 usado como está.
 
 Esse pivô está em andamento por marcos independentes, cada um com seu próprio
-ciclo desenho→implementação→validação. Primeiro marco entregue: o esqueleto
-do shell (nav própria + Discord como painel interno). Os próximos marcos
-(cada tela nova) ainda não têm data.
+ciclo desenho→implementação→validação. Marcos entregues: o esqueleto do shell
+(nav própria + Discord como painel interno) e a Central de Atividade (primeira
+tela de conteúdo própria). Os próximos marcos (cada tela nova) ainda não têm
+data.
 
 O checkout canônico é `C:\Projetos\PulseCord`. O repositório remoto é
 `marquezinii/PulseCord` e a branch de desenvolvimento ativa é
@@ -132,13 +133,33 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
   Discord carrega e autentica dentro do painel, redimensionamento (incluindo
   maximizar) mantém nav e painel do Discord alinhados sem sobreposição nem
   espaço morto.
+- **Marco 2 do pivô: Central de Atividade.** Primeira tela de conteúdo própria
+  do shell (`src/shell/activity.ts`). Clicar num destino manda
+  `IPC.shellNavigate` para o main, que **desanexa** (não destrói) a
+  `WebContentsView` do Discord — sessão, chamada de voz e estado do PulseCore
+  sobrevivem à ida e volta. A tela separa visivelmente dois tipos de fato: o
+  que o PulseCord sabe de si (versão, modo seguro, atalhos, tema, plugins —
+  autoritativo) e o que conseguiu observar do Discord. Sem token e sem API do
+  Discord (proibido pelo `AI_RULES.md`, e autenticar como cliente não-oficial
+  violaria os termos do Discord e arriscaria a conta do usuário), a leitura vem
+  do título da página, onde o Discord já publica o total desduplicado como
+  prefixo `(3) ` — somar os badges visíveis seria mais frágil e simplesmente
+  errado, já que uma menção é marcada no canal, no ícone do servidor e na pasta
+  ao mesmo tempo. `ActivitySnapshot.mentions` é `number | null`: `null`
+  significa "não foi possível ler" e nunca é colapsado com `0` ("o Discord diz
+  que não há") — a tela mostra `—` com explicação em vez de um zero que nunca
+  observou. `isShellPageSender` (mais estreito que `isTrustedIpcSender`) impede
+  que a própria página do Discord chame os canais que podem escondê-la.
+  Leituras não são persistidas: descrevem uma sessão viva, e reexibir a
+  contagem de ontem na inicialização afirmaria algo não observado desde então.
 
 ## Funcionalidades em andamento
 
 - Nenhuma implementação de produto em andamento neste momento. Próximo passo
-  do pivô de ambiente próprio é escolher e desenhar o primeiro marco de
-  conteúdo (provavelmente Central de Atividade), como um sub-projeto
-  independente com seu próprio ciclo de desenho.
+  do pivô de ambiente próprio é escolher e desenhar o próximo marco de
+  conteúdo (Organização, Automações, Biblioteca de Temas ou Painel de
+  Configurações unificado), como um sub-projeto independente com seu próprio
+  ciclo de desenho.
 
 ## Planejado
 
@@ -147,7 +168,6 @@ conectado, não mais como app que É o Discord) — cada item abaixo é um marco
 independente, um de cada vez, cada um com seu próprio desenho antes de
 implementar:
 
-- Central de Atividade: tela inicial/dashboard do shell;
 - Organização: espaço próprio de workspace, fora do modelo Discord;
 - Automações: automações permitidas pelo usuário sobre eventos do Discord;
 - Biblioteca de Temas: evolução do editor de CSS atual (hoje dentro das
@@ -249,9 +269,21 @@ dentro de `url(...)`. Corrigido em `shared/contracts.ts`: a checagem de `//`
 agora roda apenas fora dos trechos `url(...)` já validados contra a lista
 de esquemas permitidos (`data:`, `blob:`, `#`).
 
+O marco 2 acrescentou: `activity-reading.ts` (leitura do título, incluindo a
+distinção entre "zero observado" e "não foi possível ler", formatos `99+` e
+milhar agrupado, e títulos que não devem ser confundidos com o prefixo de
+não-lidas); `ActivityStore` (cópias defensivas, notificação, descarte de
+leitura mais antiga que a atual, `clear()` marcando indisponível em vez de
+zero, subscriber que lança sem derrubar os demais); `activity-reporter.ts`
+(deduplicação de leitura idêntica, reação a mudança de título, parada após
+`destroy()`); `renderActivityScreen` (garantia de que nunca renderiza número
+sem leitura, e recuperação de indisponível para contagem real); e navegação
+do shell (seleção, destino ativo, destinos desabilitados não reportam nada).
+
 Não testado por design (exigiria um processo Electron real em execução):
-`main/index.ts` (chama `app.whenReady()` no carregamento do módulo) e as
-chamadas Electron-nativas dentro de `chooseDisplaySource` e
+`main/index.ts` (chama `app.whenReady()` no carregamento do módulo), o
+anexar/desanexar da `WebContentsView` em `window.ts`, e as chamadas
+Electron-nativas dentro de `chooseDisplaySource` e
 `disablePulseCordAutoStart`. Essas partes continuam cobertas pelo smoke test
 manual do app empacotado descrito na validação mínima.
 

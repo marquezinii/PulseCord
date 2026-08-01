@@ -4,22 +4,27 @@ import { app, BrowserWindow, ipcMain, session, shell } from "electron";
 
 import {
   IPC,
+  isActivitySnapshot,
   isBuiltinPluginId,
   isCustomCss,
   isHomeIconPreference,
   isPluginDataBucket,
+  isShellDestinationId,
   isShortcutAccelerator,
   isShortcutAction,
   isShortcutBindingId,
   isStoredShortcutAccelerator,
+  isTrustedDiscordUrl,
   type AppSettings,
+  type ShellDestinationId,
   type ShortcutAction,
   type ShortcutBinding,
   type RuntimeEnvironment
 } from "../shared/contracts";
+import { ActivityStore } from "./activity-store";
 import { configureDesktopIdentity, createDesktopUserAgent } from "./desktop-identity";
 import { RecoveryStore } from "./recovery-store";
-import { isTrustedIpcSender, configureSession } from "./security";
+import { isShellPageSender, isTrustedIpcSender, configureSession } from "./security";
 import { SettingsStore } from "./settings-store";
 import { ShortcutManager } from "./shortcut-manager";
 import { disablePulseCordAutoStart } from "./startup";
@@ -28,6 +33,8 @@ import { createMainWindow } from "./window";
 const safeMode = process.argv.includes("--safe-mode");
 let mainWindow: BrowserWindow | undefined;
 let serviceContents: Electron.WebContents | undefined;
+/** Set once the shell window exists; switches which destination is on screen. */
+let showDestination: ((destination: ShellDestinationId) => void) | undefined;
 
 app.setName("PulseCord");
 if (process.platform === "win32") app.setAppUserModelId("app.pulsecord.desktop");
@@ -48,6 +55,7 @@ if (!hasSingleInstanceLock) {
   app.whenReady().then(async () => {
     const settings = new SettingsStore(app.getPath("userData"));
     const recovery = new RecoveryStore(app.getPath("userData"));
+    const activity = new ActivityStore();
     const shortcuts = new ShortcutManager(
       () => mainWindow,
       () => serviceContents
@@ -58,7 +66,7 @@ if (!hasSingleInstanceLock) {
     if (unavailableShortcuts.length > 0) {
       console.warn(`[PulseCord] ${unavailableShortcuts.length} saved shortcut(s) could not be registered.`);
     }
-    registerIpc(settings, shortcuts);
+    registerIpc(settings, shortcuts, activity);
     configureSession(session.defaultSession, () => mainWindow);
     configureDesktopIdentity(session.defaultSession, desktopUserAgent);
 
@@ -73,10 +81,22 @@ if (!hasSingleInstanceLock) {
       });
       mainWindow = shell.window;
       serviceContents = shell.serviceContents;
+      showDestination = shell.showDestination;
+
+      const unsubscribeActivity = activity.subscribe((snapshot) => {
+        if (!mainWindow || mainWindow.isDestroyed()) return;
+        mainWindow.webContents.send(IPC.activitySnapshotChanged, snapshot);
+      });
+
+      // The reading describes a live Discord surface; once that surface is
+      // gone, the last count is no longer something PulseCord can vouch for.
+      serviceContents.once("destroyed", () => activity.clear());
 
       mainWindow.on("closed", () => {
+        unsubscribeActivity();
         mainWindow = undefined;
         serviceContents = undefined;
+        showDestination = undefined;
       });
 
       setTimeout(() => {
@@ -94,7 +114,7 @@ if (!hasSingleInstanceLock) {
   });
 }
 
-function registerIpc(settings: SettingsStore, shortcuts: ShortcutManager): void {
+function registerIpc(settings: SettingsStore, shortcuts: ShortcutManager, activity: ActivityStore): void {
   const senderUrl = (event: Electron.IpcMainInvokeEvent): string => {
     return event.senderFrame?.url ?? event.sender.getURL();
   };
@@ -213,6 +233,29 @@ function registerIpc(settings: SettingsStore, shortcuts: ShortcutManager): void 
     assertSender(senderUrl(event));
     if (typeof requestedSafeMode !== "boolean") throw new TypeError("Invalid relaunch mode.");
     relaunch(requestedSafeMode);
+  });
+
+  // Only the Discord surface may report readings of Discord's own state, and
+  // only the shell may read them back or move itself between destinations.
+  ipcMain.on(IPC.activityReport, (event, snapshot: unknown) => {
+    const url = event.senderFrame?.url ?? event.sender.getURL();
+    if (!isTrustedDiscordUrl(url) || !isActivitySnapshot(snapshot)) return;
+    activity.set(snapshot);
+  });
+
+  ipcMain.handle(IPC.activitySnapshotGet, (event) => {
+    if (!isShellPageSender(senderUrl(event))) {
+      throw new Error("PulseCord rejected an activity read from outside the shell.");
+    }
+    return activity.get();
+  });
+
+  ipcMain.handle(IPC.shellNavigate, (event, destination: unknown) => {
+    if (!isShellPageSender(senderUrl(event))) {
+      throw new Error("PulseCord rejected navigation from outside the shell.");
+    }
+    if (!isShellDestinationId(destination)) throw new TypeError("Unknown shell destination.");
+    showDestination?.(destination);
   });
 }
 

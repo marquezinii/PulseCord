@@ -1,7 +1,16 @@
 import { ipcRenderer } from "electron";
 
-import { IPC, type RuntimeEnvironment } from "../shared/contracts";
+import {
+  IPC,
+  isActivitySnapshot,
+  unavailableActivity,
+  type ActivitySnapshot,
+  type AppSettings,
+  type RuntimeEnvironment,
+  type ShellDestinationId
+} from "../shared/contracts";
 import { SHELL_NAV_WIDTH } from "../shared/shell-layout";
+import { renderActivityScreen, type ActivityViewController } from "./activity";
 import { mountShellNavigation } from "./navigation";
 
 /**
@@ -13,14 +22,74 @@ import { mountShellNavigation } from "./navigation";
 async function start(): Promise<void> {
   document.documentElement.style.setProperty("--pulsecord-nav-width", `${SHELL_NAV_WIDTH}px`);
 
-  let environment: RuntimeEnvironment | undefined;
-  try {
-    environment = (await ipcRenderer.invoke(IPC.environment)) as RuntimeEnvironment;
-  } catch (error) {
-    console.error("[PulseCord] The shell could not read its runtime environment.", error);
+  const [environment, settings] = await Promise.all([
+    invokeOrWarn<RuntimeEnvironment>(IPC.environment, "runtime environment"),
+    invokeOrWarn<AppSettings>(IPC.settingsGet, "settings")
+  ]);
+
+  const content = document.getElementById("pulsecord-content");
+  if (!content) throw new Error("The shell content area is missing from the document.");
+
+  let current: ShellDestinationId = "discord";
+  let activityView: ActivityViewController | undefined;
+  let snapshot: ActivitySnapshot = unavailableActivity(Date.now());
+
+  const show = (destination: ShellDestinationId): void => {
+    current = destination;
+    // The Discord surface is a separate view that the main process positions
+    // over this area, so "showing Discord" means clearing our own content
+    // rather than drawing anything.
+    const showsOwnScreen = destination !== "discord";
+    content.hidden = !showsOwnScreen;
+    activityView = undefined;
+    content.replaceChildren();
+
+    if (destination === "activity") {
+      activityView = renderActivityScreen(document, content, {
+        environment,
+        settings,
+        onOpenDiscord: () => select("discord")
+      });
+      activityView.update(snapshot);
+    }
+  };
+
+  function select(destination: ShellDestinationId): void {
+    if (destination === current) return;
+    navigation.setActive(destination);
+    show(destination);
+    void ipcRenderer.invoke(IPC.shellNavigate, destination).catch((error: unknown) => {
+      console.error("[PulseCord] The shell could not switch destinations.", error);
+    });
   }
 
-  mountShellNavigation(document, environment);
+  const navigation = mountShellNavigation(document, environment, {
+    initial: current,
+    onSelect: select
+  });
+
+  ipcRenderer.on(IPC.activitySnapshotChanged, (_event, incoming: unknown) => {
+    if (!isActivitySnapshot(incoming)) return;
+    snapshot = incoming;
+    activityView?.update(snapshot);
+  });
+
+  show(current);
+
+  const initial = await invokeOrWarn<unknown>(IPC.activitySnapshotGet, "activity snapshot");
+  if (isActivitySnapshot(initial)) {
+    snapshot = initial;
+    activityView?.update(snapshot);
+  }
+}
+
+async function invokeOrWarn<T>(channel: string, what: string): Promise<T | undefined> {
+  try {
+    return (await ipcRenderer.invoke(channel)) as T;
+  } catch (error) {
+    console.error(`[PulseCord] The shell could not read its ${what}.`, error);
+    return undefined;
+  }
 }
 
 if (document.readyState === "loading") {

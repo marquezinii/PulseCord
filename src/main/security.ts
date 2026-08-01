@@ -24,11 +24,22 @@ export function localPageUrls(directory: string): ReadonlySet<string> {
 }
 
 const TRUSTED_LOCAL_PAGES = localPageUrls(__dirname);
+const SHELL_PAGE_URL = pathToFileURL(path.join(__dirname, "shell.html")).toString();
 const DISPLAY_SOURCES_TIMEOUT_MS = 8_000;
 
 export function isTrustedIpcSender(value: string): boolean {
   if (isTrustedDiscordUrl(value)) return true;
   return TRUSTED_LOCAL_PAGES.has(value);
+}
+
+/**
+ * Narrower than `isTrustedIpcSender`: only the shell's own chrome, never the
+ * embedded Discord surface. Channels that move the shell itself around — such
+ * as switching destinations, which can hide Discord — must not be reachable
+ * from the page being hidden.
+ */
+export function isShellPageSender(value: string): boolean {
+  return value === SHELL_PAGE_URL;
 }
 
 export function configureSession(session: Session, getMainWindow: () => BrowserWindow | undefined): void {

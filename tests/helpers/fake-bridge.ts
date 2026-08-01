@@ -1,4 +1,5 @@
 import type {
+  ActivitySnapshot,
   AppSettings,
   BuiltinPluginId,
   HomeIconPreference,
@@ -18,6 +19,7 @@ import { DEFAULT_SETTINGS } from "../../src/shared/contracts";
 export class FakeBridge implements NativeBridge {
   settings: AppSettings = structuredClone(DEFAULT_SETTINGS);
   readonly calls: string[] = [];
+  readonly activityReports: ActivitySnapshot[] = [];
   setPluginEnabledShouldFail = false;
 
   getEnvironment(): Promise<RuntimeEnvironment> {
@@ -90,5 +92,10 @@ export class FakeBridge implements NativeBridge {
 
   relaunch(): Promise<void> {
     return Promise.resolve();
+  }
+
+  reportActivity(snapshot: ActivitySnapshot): void {
+    this.calls.push(`reportActivity:${snapshot.mentions ?? "unavailable"}`);
+    this.activityReports.push(snapshot);
   }
 }

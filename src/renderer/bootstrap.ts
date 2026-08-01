@@ -1,4 +1,5 @@
 import type { NativeBridge } from "../shared/contracts";
+import { mountActivityReporter } from "./activity-reporter";
 import { mountPulseCordBranding } from "./branding";
 import { mountControlCenter } from "./control-center";
 import { mountDiscordSettingsIntegration } from "./discord-settings";
@@ -13,6 +14,10 @@ export async function bootPulseCord(bridge: NativeBridge): Promise<void> {
   const runtime = new PluginRuntime(BUILTIN_PLUGINS, bridge);
 
   if (!environment.safeMode) await runtime.startConfigured(settings);
+  // Runs in safe mode too: reading Discord's own title cannot break the page,
+  // and the shell's Activity screen is more useful, not less, when something
+  // else has gone wrong.
+  mountActivityReporter((snapshot) => bridge.reportActivity(snapshot));
   mountThemeRuntime(settings, environment);
   mountPulseCordBranding(settings, bridge);
   mountDiscordSettingsIntegration(settings, bridge);
