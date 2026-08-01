@@ -7,11 +7,13 @@ import {
   type ActivitySnapshot,
   type AppSettings,
   type RuntimeEnvironment,
-  type ShellDestinationId
+  type ShellDestinationId,
+  type ThemeSettings
 } from "../shared/contracts";
 import { SHELL_NAV_WIDTH } from "../shared/shell-layout";
 import { renderActivityScreen, type ActivityViewController } from "./activity";
 import { mountShellNavigation } from "./navigation";
+import { renderThemeLibrary } from "./themes";
 
 /**
  * Preload for the shell window's own page (static/shell.html). It runs in
@@ -22,10 +24,20 @@ import { mountShellNavigation } from "./navigation";
 async function start(): Promise<void> {
   document.documentElement.style.setProperty("--pulsecord-nav-width", `${SHELL_NAV_WIDTH}px`);
 
-  const [environment, settings] = await Promise.all([
+  const [environment, loadedSettings] = await Promise.all([
     invokeOrWarn<RuntimeEnvironment>(IPC.environment, "runtime environment"),
     invokeOrWarn<AppSettings>(IPC.settingsGet, "settings")
   ]);
+
+  let settings = loadedSettings;
+
+  // Every theme operation answers with the whole settings object, so the shell
+  // keeps its copy current instead of re-fetching after each change.
+  const themeAction = async (channel: string, ...args: unknown[]): Promise<ThemeSettings> => {
+    const updated = (await ipcRenderer.invoke(channel, ...args)) as AppSettings;
+    settings = updated;
+    return updated.theme;
+  };
 
   const content = document.getElementById("pulsecord-content");
   if (!content) throw new Error("The shell content area is missing from the document.");
@@ -51,6 +63,16 @@ async function start(): Promise<void> {
         onOpenDiscord: () => select("discord")
       });
       activityView.update(snapshot);
+      return;
+    }
+
+    if (destination === "themes") {
+      renderThemeLibrary(document, content, settings?.theme ?? { themes: [], activeThemeId: null }, {
+        create: (name, css) => themeAction(IPC.themeCreate, name, css),
+        update: (id, name, css) => themeAction(IPC.themeUpdate, id, name, css),
+        remove: (id) => themeAction(IPC.themeRemove, id),
+        activate: (id) => themeAction(IPC.themeActivate, id)
+      });
     }
   };
 

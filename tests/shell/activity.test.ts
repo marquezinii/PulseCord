@@ -90,8 +90,8 @@ describe("renderActivityScreen", () => {
 
   test("reports PulseCord's own state from settings", () => {
     const settings = structuredClone(DEFAULT_SETTINGS);
-    settings.theme.enabled = true;
-    settings.theme.customCss = ".x{color:red}";
+    settings.theme.themes = [{ id: "alpha", name: "Meu roxo", css: ".x{color:red}" }];
+    settings.theme.activeThemeId = "alpha";
     settings.shortcuts.bindings = [{ id: "a", action: "toggle-panel", accelerator: "Control+K" }];
 
     render(settings);
@@ -99,7 +99,15 @@ describe("renderActivityScreen", () => {
     const facts = host.querySelector(".facts")?.textContent ?? "";
     assert.match(facts, /9\.9\.9-test/);
     assert.match(facts, /1 configurado/);
-    assert.match(facts, /Ativo/);
+    assert.match(facts, /Meu roxo/, "the applied theme is named, not just flagged on");
+  });
+
+  test("says no theme is applied when none is", () => {
+    const settings = structuredClone(DEFAULT_SETTINGS);
+    settings.theme.themes = [{ id: "alpha", name: "Meu roxo", css: ".x{color:red}" }];
+
+    render(settings);
+    assert.match(host.querySelector(".facts")?.textContent ?? "", /Nenhum/);
   });
 
   test("still renders when settings could not be read", () => {

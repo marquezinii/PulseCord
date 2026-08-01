@@ -1,8 +1,12 @@
 import type { AppSettings, NativeBridge } from "../shared/contracts";
 import { mountShortcutEditor, type ShortcutEditorController } from "./shortcut-editor";
-import { mountThemeEditor, type ThemeEditorController } from "./theme-editor";
 
-export type PulseCordSettingsPage = "plugins" | "themes" | "shortcuts";
+/**
+ * Themes are no longer here: the theme library lives on PulseCord's own screen
+ * in the shell, reached from the navigation rail rather than from inside
+ * Discord's settings.
+ */
+export type PulseCordSettingsPage = "plugins" | "shortcuts";
 
 export const OPEN_PULSECORD_SETTINGS_EVENT = "pulsecord:open-settings";
 export const OPEN_SHORTCUTS_SETTINGS_EVENT = "pulsecord:open-shortcuts-settings";
@@ -122,7 +126,6 @@ function createSettingsIntegration(
 
   const items = new Map<PulseCordSettingsPage, HTMLElement>([
     ["plugins", createNavItem(sourceItem, "plugins", "Plugins", puzzleGlyph())],
-    ["themes", createNavItem(sourceItem, "themes", "Temas", paletteGlyph())],
     ["shortcuts", createNavItem(sourceItem, "shortcuts", "Atalhos PulseCord", keyboardGlyph())]
   ]);
   section.append(...items.values());
@@ -146,19 +149,9 @@ function createSettingsIntegration(
           <em>Em breve</em>
         </div>
       </section>
-      <section class="pc-page-view" data-page="themes" hidden>
-        <header class="pc-page-heading">
-          <span class="pc-page-icon" aria-hidden="true">${paletteGlyph()}</span>
-          <div><span class="pc-page-kicker">PULSECORD</span><h1>Temas</h1><p>Escreva e aplique seu próprio CSS diretamente no cliente.</p></div>
-        </header>
-        <main class="pc-theme-editor" aria-label="Editor de tema CSS"></main>
-      </section>
     </div>
   `;
   content.append(customPage);
-
-  const themeRoot = requireElement<HTMLElement>(customPage, ".pc-theme-editor");
-  const themeEditor: ThemeEditorController = mountThemeEditor(themeRoot, settings, bridge);
 
   let currentPage: PulseCordSettingsPage | undefined;
   let shortcutExtension: HTMLElement | undefined;
@@ -192,7 +185,7 @@ function createSettingsIntegration(
     hiddenNativeBody = undefined;
   };
 
-  const showOwnPage = (page: "plugins" | "themes"): void => {
+  const showOwnPage = (page: "plugins"): void => {
     restoreNativeBody();
     const nativeBody = findNativeBody(content);
     if (nativeBody) {
@@ -331,7 +324,7 @@ function createSettingsIntegration(
     show,
     sync(): void {
       if (currentPage === "shortcuts") syncShortcutsPage();
-      if (currentPage === "plugins" || currentPage === "themes") {
+      if (currentPage === "plugins") {
         const nativeBody = findNativeBody(content);
         if (nativeBody && nativeBody !== hiddenNativeBody) {
           restoreNativeBody();
@@ -346,7 +339,6 @@ function createSettingsIntegration(
     },
     destroy(): void {
       leavePulseCord();
-      themeEditor.destroy();
       shortcutEditor?.destroy();
       nav.removeEventListener("click", onNavClick, true);
       nav.removeEventListener("keydown", onNavKeyDown, true);
@@ -459,11 +451,11 @@ function directChildUnder(element: HTMLElement, ancestor: HTMLElement): HTMLElem
 }
 
 function pageTitle(page: PulseCordSettingsPage): string {
-  return { plugins: "Plugins", themes: "Temas", shortcuts: "Atalhos PulseCord" }[page];
+  return { plugins: "Plugins", shortcuts: "Atalhos PulseCord" }[page];
 }
 
 function isPulseCordPage(value: unknown): value is PulseCordSettingsPage {
-  return value === "plugins" || value === "themes" || value === "shortcuts";
+  return value === "plugins" || value === "shortcuts";
 }
 
 function requireElement<T extends Element>(root: ParentNode, selector: string): T {

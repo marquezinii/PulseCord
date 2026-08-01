@@ -62,7 +62,6 @@ export async function mountControlCenter(
     }
     <nav class="quick-links" aria-label="Configurações do PulseCord">
       ${settingsCard("plugins", puzzleGlyph(), "Plugins", "Área em construção")}
-      ${settingsCard("themes", paletteGlyph(), "Temas", "Criar com CSS personalizado")}
       ${settingsCard("shortcuts", keyboardGlyph(), "Atalhos PulseCord", "Adicionar e editar combinações")}
     </nav>
     <footer>

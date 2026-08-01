@@ -5,6 +5,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 
 import { SettingsStore } from "../../src/main/settings-store";
+import { MAX_THEMES, type Theme } from "../../src/shared/contracts";
 
 let dir = "";
 
@@ -20,17 +21,17 @@ describe("SettingsStore: fresh state", () => {
   test("returns defaults when no settings file exists yet", async () => {
     const store = new SettingsStore(dir);
     const settings = await store.get();
-    assert.equal(settings.schemaVersion, 4);
+    assert.equal(settings.schemaVersion, 5);
     assert.deepEqual(settings.shortcuts.bindings, []);
-    assert.equal(settings.theme.enabled, false);
+    assert.deepEqual(settings.theme, { themes: [], activeThemeId: null });
   });
 
   test("get() returns a deep copy, not a live reference to internal state", async () => {
     const store = new SettingsStore(dir);
     const first = await store.get();
-    first.theme.customCss = "mutated";
+    first.theme.activeThemeId = "mutated";
     const second = await store.get();
-    assert.equal(second.theme.customCss, "");
+    assert.equal(second.theme.activeThemeId, null);
   });
 });
 
@@ -105,15 +106,71 @@ describe("SettingsStore: shortcuts", () => {
   });
 });
 
-describe("SettingsStore: theme and plugin data", () => {
-  test("persists the custom theme across store instances", async () => {
+describe("SettingsStore: theme library", () => {
+  const theme = (id: string, name = id): Theme => ({ id, name, css: `.${id}{color:red}` });
+
+  test("persists a created theme across store instances", async () => {
     const store = new SettingsStore(dir);
-    await store.setTheme(".x{color:red}", true);
+    await store.createTheme(theme("alpha"));
 
     const reloaded = new SettingsStore(dir);
     const settings = await reloaded.get();
-    assert.equal(settings.theme.customCss, ".x{color:red}");
-    assert.equal(settings.theme.enabled, true);
+    assert.deepEqual(settings.theme.themes, [theme("alpha")]);
+    assert.equal(settings.theme.activeThemeId, null, "creating a theme does not apply it");
+  });
+
+  test("activating a theme records it, and activating null clears it", async () => {
+    const store = new SettingsStore(dir);
+    await store.createTheme(theme("alpha"));
+
+    let settings = await store.activateTheme("alpha");
+    assert.equal(settings.theme.activeThemeId, "alpha");
+
+    settings = await store.activateTheme(null);
+    assert.equal(settings.theme.activeThemeId, null);
+  });
+
+  test("updating a theme keeps its ID and its applied state", async () => {
+    const store = new SettingsStore(dir);
+    await store.createTheme(theme("alpha"));
+    await store.activateTheme("alpha");
+
+    const settings = await store.updateTheme("alpha", "Renomeado", ".x{color:blue}");
+    assert.deepEqual(settings.theme.themes, [{ id: "alpha", name: "Renomeado", css: ".x{color:blue}" }]);
+    assert.equal(settings.theme.activeThemeId, "alpha");
+  });
+
+  test("removing the applied theme leaves nothing applied", async () => {
+    const store = new SettingsStore(dir);
+    await store.createTheme(theme("alpha"));
+    await store.activateTheme("alpha");
+
+    const settings = await store.removeTheme("alpha");
+    assert.deepEqual(settings.theme.themes, []);
+    assert.equal(settings.theme.activeThemeId, null, "a deleted theme must not stay applied");
+  });
+
+  test("removing a theme leaves a different applied theme alone", async () => {
+    const store = new SettingsStore(dir);
+    await store.createTheme(theme("alpha"));
+    await store.createTheme(theme("beta"));
+    await store.activateTheme("beta");
+
+    const settings = await store.removeTheme("alpha");
+    assert.equal(settings.theme.activeThemeId, "beta");
+  });
+
+  test("rejects a duplicate ID, an unknown ID, and going past the theme limit", async () => {
+    const store = new SettingsStore(dir);
+    await store.createTheme(theme("alpha"));
+
+    await assert.rejects(() => store.createTheme(theme("alpha")), /already exists/);
+    await assert.rejects(() => store.updateTheme("missing", "x", ".x{}"), /not found/);
+    await assert.rejects(() => store.removeTheme("missing"), /not found/);
+    await assert.rejects(() => store.activateTheme("missing"), /not found/);
+
+    for (let index = 1; index < MAX_THEMES; index += 1) await store.createTheme(theme(`t${index}`));
+    await assert.rejects(() => store.createTheme(theme("overflow")), /limit/);
   });
 
   test("getPluginData returns {} for a plugin with no stored data", async () => {
@@ -130,7 +187,7 @@ describe("SettingsStore: corruption recovery", () => {
 
     const store = new SettingsStore(dir);
     const settings = await store.get();
-    assert.equal(settings.schemaVersion, 4);
+    assert.equal(settings.schemaVersion, 5);
     assert.deepEqual(settings.shortcuts.bindings, []);
 
     const entries = await readdir(dir);

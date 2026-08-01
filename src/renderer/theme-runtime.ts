@@ -1,20 +1,26 @@
-import { isCustomCss, type AppSettings, type RuntimeEnvironment, type ThemeSettings } from "../shared/contracts";
-
-export const THEME_PREVIEW_EVENT = "pulsecord:theme-preview";
+import { activeThemeCss, isCustomCss, type AppSettings, type RuntimeEnvironment } from "../shared/contracts";
 
 const STYLE_ID = "pulsecord-user-theme";
 
 export interface ThemeRuntimeController {
-  update(theme: ThemeSettings): void;
-  preview(theme: ThemeSettings): void;
+  /** Applies the given CSS, replacing whatever was applied before. */
+  apply(css: string): void;
   destroy(): void;
 }
 
+/**
+ * Applies the user's active theme to the Discord surface.
+ *
+ * The theme is authored on PulseCord's own screen, in a different renderer, so
+ * the CSS arrives here over IPC rather than from a same-document event. It is
+ * re-validated on the way in regardless: the main process already checked it,
+ * but this is the code that actually injects into the page, and it should not
+ * rely on someone upstream having been careful.
+ */
 export function mountThemeRuntime(
   settings: AppSettings,
   environment?: Pick<RuntimeEnvironment, "safeMode">
 ): ThemeRuntimeController {
-  let current = cloneTheme(settings.theme);
   let style: HTMLStyleElement | undefined;
   const safeMode = environment?.safeMode === true;
 
@@ -24,8 +30,8 @@ export function mountThemeRuntime(
     document.getElementById(STYLE_ID)?.remove();
   };
 
-  const render = (): void => {
-    if (safeMode || !current.enabled || !current.customCss.trim() || !isCustomCss(current.customCss)) {
+  const apply = (css: string): void => {
+    if (safeMode || !css.trim() || !isCustomCss(css)) {
       removeStyle();
       return;
     }
@@ -37,53 +43,15 @@ export function mountThemeRuntime(
       style.dataset.pulsecordTheme = "custom";
       (document.head ?? document.documentElement).append(style);
     }
-    style.textContent = current.customCss;
+    style.textContent = css;
   };
 
-  const apply = (theme: ThemeSettings): void => {
-    current = cloneTheme(theme);
-    render();
-  };
-
-  const onPreview = (event: Event): void => {
-    if (!(event instanceof CustomEvent) || !isThemeSettings(event.detail)) return;
-    apply(event.detail);
-  };
-
-  document.addEventListener(THEME_PREVIEW_EVENT, onPreview);
-  render();
+  apply(activeThemeCss(settings.theme));
 
   return {
-    update(theme): void {
-      apply(theme);
-    },
-    preview(theme): void {
-      apply(theme);
-    },
+    apply,
     destroy(): void {
-      document.removeEventListener(THEME_PREVIEW_EVENT, onPreview);
       removeStyle();
     }
   };
-}
-
-export function previewTheme(theme: ThemeSettings): void {
-  document.dispatchEvent(
-    new CustomEvent<ThemeSettings>(THEME_PREVIEW_EVENT, {
-      detail: cloneTheme(theme)
-    })
-  );
-}
-
-function cloneTheme(theme: ThemeSettings): ThemeSettings {
-  return {
-    enabled: theme.enabled,
-    customCss: theme.customCss
-  };
-}
-
-function isThemeSettings(value: unknown): value is ThemeSettings {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Partial<ThemeSettings>;
-  return typeof candidate.enabled === "boolean" && isCustomCss(candidate.customCss);
 }

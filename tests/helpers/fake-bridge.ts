@@ -20,6 +20,7 @@ export class FakeBridge implements NativeBridge {
   settings: AppSettings = structuredClone(DEFAULT_SETTINGS);
   readonly calls: string[] = [];
   readonly activityReports: ActivitySnapshot[] = [];
+  readonly themeListeners = new Set<(css: string) => void>();
   setPluginEnabledShouldFail = false;
 
   getEnvironment(): Promise<RuntimeEnvironment> {
@@ -92,6 +93,16 @@ export class FakeBridge implements NativeBridge {
 
   relaunch(): Promise<void> {
     return Promise.resolve();
+  }
+
+  onThemeChanged(listener: (css: string) => void): () => void {
+    this.themeListeners.add(listener);
+    return () => this.themeListeners.delete(listener);
+  }
+
+  /** Simulates the main process pushing a new applied theme to this surface. */
+  emitThemeChanged(css: string): void {
+    for (const listener of [...this.themeListeners]) listener(css);
   }
 
   reportActivity(snapshot: ActivitySnapshot): void {

@@ -12,7 +12,7 @@ export interface ShellDestination {
   available: boolean;
 }
 
-const AVAILABLE_DESTINATIONS = new Set<ShellDestinationId>(["discord", "activity"]);
+const AVAILABLE_DESTINATIONS = new Set<ShellDestinationId>(["discord", "activity", "themes"]);
 
 const DESTINATION_LABELS: Record<ShellDestinationId, string> = {
   discord: "Discord",

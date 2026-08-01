@@ -18,7 +18,9 @@ export async function bootPulseCord(bridge: NativeBridge): Promise<void> {
   // and the shell's Activity screen is more useful, not less, when something
   // else has gone wrong.
   mountActivityReporter((snapshot) => bridge.reportActivity(snapshot));
-  mountThemeRuntime(settings, environment);
+
+  const theme = mountThemeRuntime(settings, environment);
+  bridge.onThemeChanged((css) => theme.apply(css));
   mountPulseCordBranding(settings, bridge);
   mountDiscordSettingsIntegration(settings, bridge);
   await mountControlCenter(runtime, environment, settings, bridge);

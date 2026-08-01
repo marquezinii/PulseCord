@@ -112,7 +112,8 @@ function describeSelf(options: ActivityViewOptions): Array<[string, string]> {
   if (settings) {
     const shortcutCount = settings.shortcuts.bindings.length;
     facts.push(["Atalhos", shortcutCount === 1 ? "1 configurado" : `${shortcutCount} configurados`]);
-    facts.push(["Tema próprio", settings.theme.enabled ? "Ativo" : "Desligado"]);
+    const active = settings.theme.themes.find((theme) => theme.id === settings.theme.activeThemeId);
+    facts.push(["Tema aplicado", active ? active.name : "Nenhum"]);
 
     const enabledPlugins = Object.values(settings.plugins).filter(Boolean).length;
     facts.push(["Plugins ativos", String(enabledPlugins)]);

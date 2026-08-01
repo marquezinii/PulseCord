@@ -22,7 +22,12 @@ export const IPC = {
   shortcutTriggered: "pulsecord:shortcuts:triggered",
   pluginDataGet: "pulsecord:plugin-data:get",
   pluginDataSet: "pulsecord:plugin-data:set",
-  themeSet: "pulsecord:theme:set",
+  themeCreate: "pulsecord:theme:create",
+  themeUpdate: "pulsecord:theme:update",
+  themeRemove: "pulsecord:theme:remove",
+  themeActivate: "pulsecord:theme:activate",
+  /** Main -> Discord surface: the applied theme changed. */
+  themeChanged: "pulsecord:theme:changed",
   homeIconSet: "pulsecord:appearance:home-icon:set",
   welcomeSeen: "pulsecord:welcome:seen",
   openDataFolder: "pulsecord:data:open",
@@ -87,15 +92,29 @@ export interface ShortcutBinding {
 export const HOME_ICON_PREFERENCES = ["pulsecord", "discord"] as const;
 export type HomeIconPreference = (typeof HOME_ICON_PREFERENCES)[number];
 
+export interface Theme {
+  id: string;
+  name: string;
+  css: string;
+}
+
+/**
+ * The user's theme library: several saved themes, at most one applied.
+ *
+ * `activeThemeId` is the single source of truth for "is a theme on" — there is
+ * no separate enabled flag to fall out of sync with it. An ID that names no
+ * saved theme is treated as none being active, and `sanitizeSettings` clears it
+ * rather than leaving a dangling reference behind.
+ */
 export interface ThemeSettings {
-  enabled: boolean;
-  customCss: string;
+  themes: Theme[];
+  activeThemeId: string | null;
 }
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
 export interface AppSettings {
-  schemaVersion: 4;
+  schemaVersion: 5;
   plugins: Record<BuiltinPluginId, boolean>;
   pluginData: Record<BuiltinPluginId, Record<string, JsonValue>>;
   shortcuts: {
@@ -167,7 +186,8 @@ export interface NativeBridge {
   /** @deprecated Use binding-based shortcut operations. */
   setShortcut(action: ShortcutAction, accelerator: ShortcutAccelerator): Promise<AppSettings>;
   onShortcutTriggered(listener: (action: ShortcutAction) => void): () => void;
-  setTheme(customCss: string, enabled: boolean): Promise<AppSettings>;
+  /** Applies the given CSS to this surface until the next change. */
+  onThemeChanged(listener: (css: string) => void): () => void;
   setHomeIcon(preference: HomeIconPreference): Promise<AppSettings>;
   markWelcomeSeen(): Promise<AppSettings>;
   openDataFolder(): Promise<void>;
@@ -179,17 +199,19 @@ export interface NativeBridge {
 export const MAX_SHORTCUT_BINDINGS = 64;
 export const MAX_CUSTOM_CSS_LENGTH = 128 * 1024;
 export const MAX_PLUGIN_DATA_BYTES = 64 * 1024;
+export const MAX_THEMES = 10;
+export const MAX_THEME_NAME_LENGTH = 60;
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  schemaVersion: 4,
+  schemaVersion: 5,
   plugins: {},
   pluginData: {},
   shortcuts: {
     bindings: []
   },
   theme: {
-    enabled: false,
-    customCss: ""
+    themes: [],
+    activeThemeId: null
   },
   appearance: {
     homeIcon: "pulsecord"
@@ -284,14 +306,10 @@ export function sanitizeSettings(value: unknown): AppSettings {
   const pluginCandidate = isRecord(value.plugins) ? value.plugins : {};
   const pluginDataCandidate = isRecord(value.pluginData) ? value.pluginData : {};
   const uiCandidate = isRecord(value.ui) ? value.ui : {};
-  const themeCandidate = isRecord(value.theme) ? value.theme : {};
   const appearanceCandidate = isRecord(value.appearance) ? value.appearance : {};
-  const rawCustomCss = themeCandidate.customCss;
-  const hasValidCustomCss = isCustomCss(rawCustomCss);
-  const customCss: string = hasValidCustomCss ? rawCustomCss : DEFAULT_SETTINGS.theme.customCss;
 
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     plugins: Object.fromEntries(
       BUILTIN_PLUGIN_IDS.map((id) => [
         id,
@@ -304,10 +322,7 @@ export function sanitizeSettings(value: unknown): AppSettings {
     shortcuts: {
       bindings: sanitizeShortcutBindings(value.shortcuts)
     },
-    theme: {
-      enabled: typeof themeCandidate.enabled === "boolean" ? themeCandidate.enabled && hasValidCustomCss : false,
-      customCss
-    },
+    theme: sanitizeThemeSettings(value.theme),
     appearance: {
       homeIcon: isHomeIconPreference(appearanceCandidate.homeIcon)
         ? appearanceCandidate.homeIcon
@@ -318,6 +333,75 @@ export function sanitizeSettings(value: unknown): AppSettings {
         typeof uiCandidate.seenWelcome === "boolean" ? uiCandidate.seenWelcome : DEFAULT_SETTINGS.ui.seenWelcome
     }
   };
+}
+
+export function isThemeId(value: unknown): value is string {
+  return typeof value === "string" && /^[a-zA-Z0-9_-]{1,64}$/.test(value);
+}
+
+export function isThemeName(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.trim().length > 0 &&
+    value.length <= MAX_THEME_NAME_LENGTH &&
+    // Control characters would let a name break the UI that renders it.
+    !/\p{Cc}/u.test(value)
+  );
+}
+
+/**
+ * Normalises the theme library, migrating the pre-v5 single-theme shape on the
+ * way.
+ *
+ * Schema 4 stored one theme as `{ enabled, customCss }`. That CSS is the user's
+ * work, so it is carried into the library as a named theme rather than dropped,
+ * and it starts applied only if it was applied before.
+ */
+const MIGRATED_THEME_ID = "migrated-theme";
+
+function sanitizeThemeSettings(value: unknown): ThemeSettings {
+  const candidate = isRecord(value) ? value : {};
+  const isLibrary = Array.isArray(candidate.themes);
+  const rawThemes = isLibrary ? (candidate.themes as unknown[]) : migrateLegacyTheme(candidate);
+
+  const themes: Theme[] = [];
+  const ids = new Set<string>();
+
+  for (const raw of rawThemes.slice(0, MAX_THEMES)) {
+    if (!isRecord(raw)) continue;
+    if (!isThemeId(raw.id) || !isThemeName(raw.name) || !isCustomCss(raw.css)) continue;
+    if (ids.has(raw.id)) continue;
+
+    ids.add(raw.id);
+    themes.push({ id: raw.id, name: raw.name.trim(), css: raw.css });
+  }
+
+  // A schema-4 file has no activeThemeId; whether its single theme was applied
+  // lives in the old `enabled` flag instead, so the migration reads that.
+  const requestedId = isLibrary ? candidate.activeThemeId : legacyActiveThemeId(candidate);
+
+  // An ID naming no surviving theme would leave the runtime asking for CSS that
+  // does not exist, so it is cleared rather than kept as a dangling reference.
+  const activeThemeId = isThemeId(requestedId) && ids.has(requestedId) ? requestedId : null;
+
+  return { themes, activeThemeId };
+}
+
+function migrateLegacyTheme(candidate: Record<string, unknown>): unknown[] {
+  const css = candidate.customCss;
+  if (!isCustomCss(css) || css.trim().length === 0) return [];
+
+  return [{ id: MIGRATED_THEME_ID, name: "Meu tema", css }];
+}
+
+function legacyActiveThemeId(candidate: Record<string, unknown>): string | null {
+  return candidate.enabled === true ? MIGRATED_THEME_ID : null;
+}
+
+/** Resolves the CSS the runtime should apply, or "" when no theme is active. */
+export function activeThemeCss(theme: ThemeSettings): string {
+  if (theme.activeThemeId === null) return "";
+  return theme.themes.find((candidate) => candidate.id === theme.activeThemeId)?.css ?? "";
 }
 
 function sanitizeShortcutBindings(value: unknown): ShortcutBinding[] {

@@ -8,8 +8,10 @@ import {
   type JsonValue,
   type ShortcutAction,
   type ShortcutBinding,
+  type Theme,
   DEFAULT_SETTINGS,
   MAX_SHORTCUT_BINDINGS,
+  MAX_THEMES,
   sanitizeSettings
 } from "../shared/contracts";
 
@@ -97,10 +99,45 @@ export class SettingsStore {
     return next.pluginData[id] ?? {};
   }
 
-  async setTheme(customCss: string, enabled: boolean): Promise<AppSettings> {
+  async createTheme(theme: Theme): Promise<AppSettings> {
     return this.#update((settings) => {
-      settings.theme.customCss = customCss;
-      settings.theme.enabled = enabled;
+      if (settings.theme.themes.length >= MAX_THEMES) {
+        throw new Error("The theme limit has been reached.");
+      }
+      if (settings.theme.themes.some((current) => current.id === theme.id)) {
+        throw new Error("A theme with that ID already exists.");
+      }
+      settings.theme.themes.push(structuredClone(theme));
+    });
+  }
+
+  async updateTheme(id: string, name: string, css: string): Promise<AppSettings> {
+    return this.#update((settings) => {
+      const theme = settings.theme.themes.find((current) => current.id === id);
+      if (!theme) throw new Error("Theme not found.");
+      theme.name = name;
+      theme.css = css;
+    });
+  }
+
+  async removeTheme(id: string): Promise<AppSettings> {
+    return this.#update((settings) => {
+      const index = settings.theme.themes.findIndex((theme) => theme.id === id);
+      if (index === -1) throw new Error("Theme not found.");
+      settings.theme.themes.splice(index, 1);
+      // Deleting the applied theme leaves nothing applied; sanitizeSettings
+      // would clear the dangling ID anyway, but doing it here keeps the value
+      // the caller gets back consistent with what was just asked for.
+      if (settings.theme.activeThemeId === id) settings.theme.activeThemeId = null;
+    });
+  }
+
+  async activateTheme(id: string | null): Promise<AppSettings> {
+    return this.#update((settings) => {
+      if (id !== null && !settings.theme.themes.some((theme) => theme.id === id)) {
+        throw new Error("Theme not found.");
+      }
+      settings.theme.activeThemeId = id;
     });
   }
 

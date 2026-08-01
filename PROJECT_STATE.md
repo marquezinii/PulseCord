@@ -16,9 +16,8 @@ usado como está.
 
 Esse pivô está em andamento por marcos independentes, cada um com seu próprio
 ciclo desenho→implementação→validação. Marcos entregues: o esqueleto do shell
-(nav própria + Discord como painel interno) e a Central de Atividade (primeira
-tela de conteúdo própria). Os próximos marcos (cada tela nova) ainda não têm
-data.
+(nav própria + Discord como painel interno), a Central de Atividade e a
+Biblioteca de Temas. Os próximos marcos (cada tela nova) ainda não têm data.
 
 O checkout canônico é `C:\Projetos\PulseCord`. O repositório remoto é
 `marquezinii/PulseCord` e a branch de desenvolvimento ativa é
@@ -69,9 +68,10 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
 
 - App Electron com login no domínio oficial do Discord, sem coleta de senha;
 - identidade desktop do PulseCord, sem ponte privada de outro cliente;
-- categoria PulseCord nas configurações: Plugins, Themes e PulseCord Shortcuts;
-- editor de CSS local com preview, persistência explícita, safe mode e bloqueio
-  de imports/recursos remotos;
+- categoria PulseCord nas configurações do Discord: Plugins e PulseCord
+  Shortcuts (Temas saiu daqui e virou tela própria do shell);
+- biblioteca de temas em CSS local (tela própria do shell), com persistência
+  explícita, safe mode e bloqueio de imports/recursos remotos;
 - atalhos globais próprios, com criação, edição, remoção e detecção de conflito;
 - lista padrão de atalhos do Discord preservada quando disponível, sem copiar
   implementação privada;
@@ -110,7 +110,7 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
   restante do shell; `dom.patch(seletor, aplicar)` reaplica/desfaz mudanças
   conforme elementos do Discord aparecem/somem, sem o plugin reimplementar
   `MutationObserver`; cada plugin ganhou armazenamento próprio persistido
-  (`AppSettings.pluginData`, schema versão 4) e um `CommandRegistry`
+  (`AppSettings.pluginData`, schema versão 4 na época; hoje 5) e um `CommandRegistry`
   compartilhado para nomear ações que integrações futuras (paleta de
   comandos, atalhos) poderão acionar sem alterar o motor. Continua sem
   nenhum plugin first-party habilitado; o motor está pronto, mas ainda vazio.
@@ -152,14 +152,32 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
   que a própria página do Discord chame os canais que podem escondê-la.
   Leituras não são persistidas: descrevem uma sessão viva, e reexibir a
   contagem de ontem na inicialização afirmaria algo não observado desde então.
+- **Marco 3 do pivô: Biblioteca de Temas.** O editor de CSS saiu de dentro das
+  configurações do Discord e virou tela própria do shell
+  (`src/shell/themes.ts`); o card "Temas" do PulsePanel foi removido junto,
+  para não haver duas portas para a mesma coisa. Schema subiu para 5:
+  `ThemeSettings` deixou de ser `{enabled, customCss}` e virou biblioteca —
+  `{themes: [{id, name, css}], activeThemeId}`, até 10 temas, no máximo 1
+  aplicado. `activeThemeId` é a única fonte de verdade sobre "tem tema
+  ligado", sem flag `enabled` paralela para dessincronizar. Migração de v4:
+  o CSS existente vira um tema chamado "Meu tema" (o trabalho do usuário não
+  é descartado) e só nasce aplicado se estava aplicado antes. **Não há mais
+  preview ao vivo**: na tela Temas o Discord fica escondido, então estilizar
+  "enquanto digita" mexeria em algo que o usuário não vê — aplicar é ato
+  explícito, e o resultado aparece ao voltar para o Discord. Aplicar agora
+  cruza fronteira de processo: shell edita, main grava e empurra o CSS
+  resolvido para a view do Discord via `IPC.themeChanged`. O CSS é validado
+  no main antes de gravar **e de novo** no runtime antes de injetar, porque é
+  o runtime que de fato escreve na página. Os canais de tema são fechados com
+  `isShellPageSender`: a própria página do Discord não pode reescrever o CSS
+  que é injetado nela.
 
 ## Funcionalidades em andamento
 
 - Nenhuma implementação de produto em andamento neste momento. Próximo passo
   do pivô de ambiente próprio é escolher e desenhar o próximo marco de
-  conteúdo (Organização, Automações, Biblioteca de Temas ou Painel de
-  Configurações unificado), como um sub-projeto independente com seu próprio
-  ciclo de desenho.
+  conteúdo (Organização, Automações ou Painel de Configurações unificado),
+  como um sub-projeto independente com seu próprio ciclo de desenho.
 
 ## Planejado
 
@@ -170,10 +188,9 @@ implementar:
 
 - Organização: espaço próprio de workspace, fora do modelo Discord;
 - Automações: automações permitidas pelo usuário sobre eventos do Discord;
-- Biblioteca de Temas: evolução do editor de CSS atual (hoje dentro das
-  settings do Discord) para uma tela própria do shell, com múltiplos temas;
-- Painel de Configurações unificado: mover Plugins/Temas/Atalhos (hoje dentro
-  das settings do Discord) e o PulsePanel para viver nas telas do shell;
+- Painel de Configurações unificado: mover Plugins/Atalhos (hoje dentro das
+  settings do Discord) e o PulsePanel para viver nas telas do shell, como
+  Temas já foi;
 - Modelo seguro para plugins externos: manifestos, permissões, assinaturas e
   isolamento de falhas antes de executar JavaScript de terceiros;
 - instalador e fluxo de release somente após autorização explícita e validação
@@ -279,6 +296,17 @@ zero, subscriber que lança sem derrubar os demais); `activity-reporter.ts`
 `destroy()`); `renderActivityScreen` (garantia de que nunca renderiza número
 sem leitura, e recuperação de indisponível para contagem real); e navegação
 do shell (seleção, destino ativo, destinos desabilitados não reportam nada).
+
+O marco 3 acrescentou: migração de schema 4 para 5 (tema legado ligado
+continua ligado; tema legado salvo mas desligado é preservado sem aplicar;
+tema legado inválido é descartado), sanitização da biblioteca (ids/nomes/CSS
+inválidos removidos, `activeThemeId` pendurado limpo, cap de `MAX_THEMES` e
+ids duplicados), `activeThemeCss`, `isThemeName`, as operações de biblioteca
+do `SettingsStore` (criar/editar/aplicar/remover, incluindo remover o tema
+aplicado e os limites), e a tela Temas (recusa salvar sem nome ou com CSS
+remoto sem sequer chamar o main; criar e então editar o mesmo tema em vez de
+duplicar; aplicar/desaplicar; falha de gravação reportada em vez de fingir
+sucesso; nome de tema renderizado como texto, nunca como markup).
 
 Não testado por design (exigiria um processo Electron real em execução):
 `main/index.ts` (chama `app.whenReady()` no carregamento do módulo), o

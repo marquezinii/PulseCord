@@ -36,11 +36,11 @@ describe("mountShellNavigation", () => {
     }
   });
 
-  test("Discord and Activity are the destinations built so far", () => {
+  test("Discord, Activity and Themes are the destinations built so far", () => {
     const available = SHELL_DESTINATIONS.filter((destination) => destination.available);
     assert.deepEqual(
       available.map((destination) => destination.id),
-      ["discord", "activity"]
+      ["discord", "activity", "themes"]
     );
   });
 
@@ -62,7 +62,7 @@ describe("mountShellNavigation", () => {
     const selected: ShellDestinationId[] = [];
     mountShellNavigation(document, ENVIRONMENT, options({ onSelect: (id) => selected.push(id) }));
 
-    document.querySelector<HTMLButtonElement>('[data-destination="themes"]')?.click();
+    document.querySelector<HTMLButtonElement>('[data-destination="automations"]')?.click();
     assert.deepEqual(selected, []);
   });
 

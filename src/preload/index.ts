@@ -39,7 +39,13 @@ const bridge: NativeBridge = Object.freeze({
     ipcRenderer.on(IPC.shortcutTriggered, handler);
     return () => ipcRenderer.removeListener(IPC.shortcutTriggered, handler);
   },
-  setTheme: (customCss: string, enabled: boolean) => ipcRenderer.invoke(IPC.themeSet, customCss, enabled),
+  onThemeChanged: (listener: (css: string) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, css: unknown): void => {
+      if (typeof css === "string") listener(css);
+    };
+    ipcRenderer.on(IPC.themeChanged, handler);
+    return () => ipcRenderer.removeListener(IPC.themeChanged, handler);
+  },
   setHomeIcon: (preference: HomeIconPreference) => ipcRenderer.invoke(IPC.homeIconSet, preference),
   markWelcomeSeen: () => ipcRenderer.invoke(IPC.welcomeSeen),
   openDataFolder: () => ipcRenderer.invoke(IPC.openDataFolder),

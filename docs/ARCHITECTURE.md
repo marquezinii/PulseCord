@@ -6,7 +6,7 @@ PulseCord is deliberately small. The system is split across Electron's trust bou
 
 PulseCord's window is its own environment, not a full-window loader for `discord.com`. The `BrowserWindow` renders PulseCord's own chrome — today, a navigation rail (`static/shell.html` + `src/shell/`) — and Discord is embedded as a sibling render surface via Electron's `WebContentsView` (`src/main/service-view.ts`), filling the content area to the right of the rail. `src/shared/shell-layout.ts` is the single source of truth for the rail's width, used by both the main process (to size the view) and the shell's own CSS (to size the rail), so they cannot drift apart.
 
-This is additive, not a reimplementation: the embedded view still loads the real `https://discord.com/app`, with the same preload, session, permission handling, and desktop-identity spoofing it had when it was the whole window. PulseCord draws chrome around Discord; it does not draw Discord. The navigation rail declares every destination in `SHELL_DESTINATION_IDS` (`src/shared/contracts.ts`); the ones not yet built (Organização, Automações, Temas, Configurações) render as explicitly disabled placeholders, so the shape of the product is visible without claiming a screen exists before it does. Each becomes real in its own later milestone.
+This is additive, not a reimplementation: the embedded view still loads the real `https://discord.com/app`, with the same preload, session, permission handling, and desktop-identity spoofing it had when it was the whole window. PulseCord draws chrome around Discord; it does not draw Discord. The navigation rail declares every destination in `SHELL_DESTINATION_IDS` (`src/shared/contracts.ts`); the ones not yet built (Organização, Automações, Configurações) render as explicitly disabled placeholders, so the shape of the product is visible without claiming a screen exists before it does. Each becomes real in its own later milestone.
 
 The destination IDs live in `shared/contracts.ts` rather than beside the rail's markup because the main process validates them as IPC input: switching destinations is what decides whether the Discord view is on screen at all.
 
@@ -40,7 +40,7 @@ Display sharing is implemented through Electron's supported display-media reques
 
 PulseCord also owns its desktop shortcut engine. Electron registers only accelerators explicitly chosen by the user, `SettingsStore` persists them in the versioned local settings schema, and a narrow IPC channel dispatches only allowlisted first-party actions. Discord's private keybind implementation is not loaded or imitated.
 
-Schema version 4 stores shortcut bindings by ID, the local CSS theme, the Home-icon preference, and a per-plugin JSON data bucket (`pluginData`) used by PulseCore's `settings` capability. Shortcut combinations and actions are unique, the store accepts at most 64 bindings, and each plugin's data bucket is capped at 64&nbsp;KB.
+Schema version 5 stores shortcut bindings by ID, the theme library, the Home-icon preference, and a per-plugin JSON data bucket (`pluginData`) used by PulseCore's `settings` capability. Shortcut combinations and actions are unique, the store accepts at most 64 bindings, and each plugin's data bucket is capped at 64&nbsp;KB.
 
 ## Preload bridge
 
@@ -68,13 +68,23 @@ Plugins still compile into the bundle rather than loading arbitrary local or rem
 
 PulsePanel is mounted in a closed Shadow DOM root, inside the embedded Discord view (not the shell's own chrome) — it is independent of the page's component tree and private module loader, and its floating launcher/panel is now visually contained to the Discord view's bounds rather than the whole window. Moving PulsePanel's controls into the shell's own navigation rail is future work, not part of this milestone. PulsePanel is the quick control surface, while detailed configuration lives in a dedicated PulseCord category inside Discord's visible settings shell.
 
-The category contains Plugins, Themes, and PulseCord Shortcuts. When a native System shortcut page is available, the PulseCord entry routes to that already-rendered page and hides the duplicate System navigation item. This preserves Discord's unchanged standard-shortcut list and keycaps while mounting original PulseCord editor markup and behavior above it. No private Discord module or modified-client code is imported.
+The category contains Plugins and PulseCord Shortcuts. Themes moved out of it entirely and now live on the shell's own screen (see "The theme library"). When a native System shortcut page is available, the PulseCord entry routes to that already-rendered page and hides the duplicate System navigation item. This preserves Discord's unchanged standard-shortcut list and keycaps while mounting original PulseCord editor markup and behavior above it. No private Discord module or modified-client code is imported.
 
 A compatibility observer remounts the category when Discord recreates the settings modal, and PulsePanel remains available if that optional integration needs adapting.
 
-## Custom themes
+## The theme library
 
-The Themes page provides an original CSS editor with local preview and explicit persistence. Saved CSS is applied through one PulseCord-owned `<style>` element and is removed when disabled. Safe mode never applies the custom theme. The main-process contract rejects oversized CSS, imports, and remote resource URLs before writing settings.
+Themes live on PulseCord's own screen in the shell (`src/shell/themes.ts`), reached from the navigation rail. The library holds up to `MAX_THEMES` saved themes, each `{ id, name, css }`, with at most one applied at a time.
+
+`activeThemeId` is the single source of truth for "is a theme on" — there is no separate enabled flag that could drift out of sync with it. An ID naming no saved theme means none is applied, and `sanitizeSettings` clears it rather than leaving the runtime asking for CSS that does not exist.
+
+Schema 4 stored a single theme as `{ enabled, customCss }`. `sanitizeThemeSettings` migrates it: the CSS is the user's work, so it becomes a named theme rather than being dropped, and it starts applied only if it was applied before.
+
+**There is no live preview.** On the Themes screen the Discord surface is hidden, so previewing as you type would style something the user cannot see. Applying a theme is an explicit act, and the result is visible on returning to Discord. This replaced the old same-document preview, which stopped being meaningful once Discord became a panel the shell can hide.
+
+Applying a theme crosses a process boundary now: the shell edits the library, the main process writes it and pushes the resolved CSS to the Discord surface over `IPC.themeChanged`, and `mountThemeRuntime` injects it through one PulseCord-owned `<style>` element. The CSS is validated in the main process before it is stored *and* again in the runtime before injection — the runtime is what actually writes into the page, so it does not rely on someone upstream having been careful. Safe mode applies nothing at all: it exists so a broken theme cannot keep the app unusable.
+
+The library is edited only from the shell page. `themeCreate`/`themeUpdate`/`themeRemove`/`themeActivate` are gated by `isShellPageSender`, so the Discord surface cannot rewrite the CSS that gets injected into it.
 
 ## Branding and appearance
 

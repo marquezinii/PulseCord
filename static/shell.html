@@ -173,6 +173,131 @@
       }
       .facts dt { color: #858c9e; }
       .facts dd { margin: 0; color: #e4e7ee; font-weight: 560; }
+      .theme-layout {
+        display: grid;
+        grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+        gap: 20px;
+        margin-top: 26px;
+        align-items: start;
+      }
+      .theme-list { display: grid; gap: 7px; }
+      .theme-list-heading {
+        color: #858c9e;
+        font-size: 10px;
+        font-weight: 750;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+      }
+      .theme-new {
+        padding: 9px 12px;
+        border: 1px dashed #3a3d49;
+        border-radius: 10px;
+        background: transparent;
+        color: #b9a6f5;
+        font: inherit;
+        font-size: 11.5px;
+        font-weight: 640;
+        cursor: pointer;
+      }
+      .theme-new:hover:not(:disabled) { border-color: var(--accent); background: rgba(139, 92, 246, .08); }
+      .theme-new:disabled { opacity: .4; cursor: not-allowed; }
+      .theme-empty { margin: 6px 0 0; color: #767d8f; font-size: 11.5px; }
+      .theme-item {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        gap: 6px;
+        align-items: center;
+        padding: 7px 8px;
+        border: 1px solid #23252e;
+        border-radius: 11px;
+        background: #15171e;
+      }
+      .theme-item.editing { border-color: var(--accent); }
+      .theme-item button { border: 0; background: transparent; font: inherit; cursor: pointer; }
+      .theme-open {
+        min-width: 0;
+        overflow: hidden;
+        padding: 3px 2px;
+        color: #e4e7ee;
+        font-size: 12px;
+        font-weight: 600;
+        text-align: left;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .theme-toggle {
+        padding: 4px 8px;
+        border-radius: 7px;
+        background: #22242e;
+        color: #a5adc0;
+        font-size: 9.5px;
+        font-weight: 700;
+      }
+      .theme-toggle.on { background: rgba(139, 92, 246, .18); color: var(--accent); }
+      .theme-remove { padding: 4px 6px; color: #7c8296; font-size: 9.5px; font-weight: 650; }
+      .theme-remove:hover { color: #f07889; }
+      .theme-editor {
+        display: grid;
+        gap: 14px;
+        padding: 20px 22px;
+        border: 1px solid #23252e;
+        border-radius: 16px;
+        background: #15171e;
+      }
+      .field { display: grid; gap: 6px; }
+      .field > span {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        color: #949bad;
+        font-size: 11px;
+        font-weight: 640;
+      }
+      .field em { color: #6d7386; font-size: 9.5px; font-style: normal; font-variant-numeric: tabular-nums; }
+      .field input,
+      .field textarea {
+        width: 100%;
+        padding: 9px 11px;
+        border: 1px solid #2c2f3a;
+        border-radius: 9px;
+        outline: none;
+        background: #101218;
+        color: #e4e7ee;
+        font: inherit;
+        font-size: 12px;
+      }
+      .field textarea {
+        min-height: 300px;
+        resize: vertical;
+        font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+        line-height: 1.6;
+        tab-size: 2;
+      }
+      .field input:focus,
+      .field textarea:focus { border-color: var(--accent); }
+      .field input:disabled,
+      .field textarea:disabled { opacity: .6; cursor: wait; }
+      .theme-note { margin: 0; color: #767d8f; font-size: 10.5px; line-height: 1.5; }
+      .theme-status { min-height: 15px; margin: 0; font-size: 11px; font-weight: 640; }
+      .theme-status[data-kind="error"] { color: #f07889; }
+      .theme-status[data-kind="success"] { color: #58b88a; }
+      .theme-actions { display: flex; gap: 9px; }
+      .theme-actions button:not(.primary) {
+        padding: 8px 13px;
+        border: 1px solid #2f323d;
+        border-radius: 9px;
+        background: transparent;
+        color: #b6bccb;
+        font: inherit;
+        font-size: 11.5px;
+        font-weight: 620;
+        cursor: pointer;
+      }
+      .theme-actions .primary { margin-top: 0; }
+      .theme-actions button:disabled { opacity: .45; cursor: not-allowed; }
+      @media (max-width: 900px) {
+        .theme-layout { grid-template-columns: minmax(0, 1fr); }
+      }
     </style>
   </head>
   <body>

@@ -14,7 +14,10 @@ import {
   isShortcutAction,
   isShortcutBindingId,
   isStoredShortcutAccelerator,
+  isThemeId,
+  isThemeName,
   isTrustedDiscordUrl,
+  activeThemeCss,
   type AppSettings,
   type ShellDestinationId,
   type ShortcutAction,
@@ -204,12 +207,36 @@ function registerIpc(settings: SettingsStore, shortcuts: ShortcutManager, activi
       : createShortcut(settings, shortcuts, action, accelerator);
   });
 
-  ipcMain.handle(IPC.themeSet, async (event, customCss: unknown, enabled: unknown) => {
-    assertSender(senderUrl(event));
-    if (!isCustomCss(customCss) || typeof enabled !== "boolean") {
-      throw new TypeError("Invalid custom theme update.");
+  // The theme library is edited from the shell's own screen, so these are
+  // gated to the shell page rather than the broader trusted-sender set.
+  const assertShellSender = (event: Electron.IpcMainInvokeEvent): void => {
+    if (!isShellPageSender(senderUrl(event))) {
+      throw new Error("PulseCord rejected a theme change from outside the shell.");
     }
-    return settings.setTheme(customCss, enabled);
+  };
+
+  ipcMain.handle(IPC.themeCreate, async (event, name: unknown, css: unknown) => {
+    assertShellSender(event);
+    if (!isThemeName(name) || !isCustomCss(css)) throw new TypeError("Invalid theme.");
+    return applyTheme(await settings.createTheme({ id: randomUUID(), name: name.trim(), css }));
+  });
+
+  ipcMain.handle(IPC.themeUpdate, async (event, id: unknown, name: unknown, css: unknown) => {
+    assertShellSender(event);
+    if (!isThemeId(id) || !isThemeName(name) || !isCustomCss(css)) throw new TypeError("Invalid theme update.");
+    return applyTheme(await settings.updateTheme(id, name.trim(), css));
+  });
+
+  ipcMain.handle(IPC.themeRemove, async (event, id: unknown) => {
+    assertShellSender(event);
+    if (!isThemeId(id)) throw new TypeError("Invalid theme removal.");
+    return applyTheme(await settings.removeTheme(id));
+  });
+
+  ipcMain.handle(IPC.themeActivate, async (event, id: unknown) => {
+    assertShellSender(event);
+    if (id !== null && !isThemeId(id)) throw new TypeError("Invalid theme activation.");
+    return applyTheme(await settings.activateTheme(id));
   });
 
   ipcMain.handle(IPC.homeIconSet, async (event, preference: unknown) => {
@@ -325,6 +352,21 @@ async function handleRendererCrash(recovery: RecoveryStore, reason: string): Pro
   console.error(`[PulseCord] Renderer stopped: ${reason}`);
   const shouldUseSafeMode = await recovery.recordCrash();
   if (shouldUseSafeMode && !safeMode) relaunch(true);
+}
+
+/**
+ * Pushes the applied CSS to the Discord surface after a library change.
+ *
+ * The shell and Discord are separate renderers now, so a theme edited on
+ * PulseCord's own screen cannot reach the page it styles by itself. Safe mode
+ * deliberately applies nothing: it exists so a broken theme cannot keep the
+ * app unusable.
+ */
+function applyTheme(updated: AppSettings): AppSettings {
+  if (!safeMode && serviceContents && !serviceContents.isDestroyed()) {
+    serviceContents.send(IPC.themeChanged, activeThemeCss(updated.theme));
+  }
+  return updated;
 }
 
 function relaunch(requestedSafeMode: boolean): void {
