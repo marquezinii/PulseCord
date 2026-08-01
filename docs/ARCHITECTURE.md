@@ -1,12 +1,24 @@
 # Architecture
 
-PulseCord 0.2 is deliberately small. The system is split across Electron's trust boundaries instead of sharing a broad global API.
+PulseCord is deliberately small. The system is split across Electron's trust boundaries instead of sharing a broad global API.
+
+## Shell architecture
+
+PulseCord's window is its own environment, not a full-window loader for `discord.com`. The `BrowserWindow` renders PulseCord's own chrome — today, a navigation rail (`static/shell.html` + `src/shell/`) — and Discord is embedded as a sibling render surface via Electron's `WebContentsView` (`src/main/service-view.ts`), filling the content area to the right of the rail. `src/shared/shell-layout.ts` is the single source of truth for the rail's width, used by both the main process (to size the view) and the shell's own CSS (to size the rail), so they cannot drift apart.
+
+This is additive, not a reimplementation: the embedded view still loads the real `https://discord.com/app`, with the same preload, session, permission handling, and desktop-identity spoofing it had when it was the whole window. PulseCord draws chrome around Discord; it does not draw Discord. The navigation rail currently declares five future destinations (Central de Atividade, Organização, Automações, Temas, Configurações) as explicitly disabled placeholders — `SHELL_DESTINATIONS` in `src/shell/navigation.ts` — so the shape of the product is visible without claiming a screen exists before it does. Each becomes real in its own later milestone.
+
+The shell's own page (`shell.html`) is a static, non-interactive local page today: no preload bridge, no IPC, nothing for `isTrustedIpcSender` to need to trust from it yet. `src/main/security.ts` still names it explicitly (`LOCAL_PAGE_FILENAMES`) alongside `offline.html`, both resolved to exact `file://` URLs at startup, because the moment the rail needs to call into the main process, that trust boundary already exists rather than needing to be retrofitted under pressure.
 
 ## Main process
 
-The main process owns the window, local settings, recovery records, permissions, navigation, display-media selection, and operating-system actions. It exposes a versioned allowlist of narrow IPC operations plus a one-way shortcut event. Every request validates the sender URL and every mutable argument.
+The main process owns the window, the embedded service view, local settings, recovery records, permissions, navigation, display-media selection, and operating-system actions. It exposes a versioned allowlist of narrow IPC operations plus a one-way shortcut event. Every request validates the sender URL and every mutable argument.
 
-The main window loads only the official Discord web application. External navigation is opened in the system browser. Webviews are blocked, Node integration is disabled, context isolation is enabled, and the renderer is sandboxed.
+The embedded Discord view may only navigate to a trusted Discord origin (`hardenServiceContents`); the shell's own chrome may not navigate anywhere at all (`hardenShellContents`) — a stray link or injected redirect there is cancelled and handed to the system browser instead. Both block window-open (popups either load in place, if trusted, or open externally) and both block attaching `<webview>` tags. External navigation always goes to the system browser. Node integration is disabled, context isolation is enabled, and both render surfaces are sandboxed.
+
+Because the shell window and the embedded Discord view are two independent render surfaces, each can crash independently; both route through the same recovery path (`onRendererCrash` → `RecoveryStore`), since either one going down leaves the user without a usable window.
+
+Global shortcuts raise and focus the shell window, but deliver key events to the embedded Discord view's `WebContents` specifically (`ShortcutManager` takes a `getServiceContents` accessor) — that is where Discord and PulseCore actually live, not in the shell's static chrome.
 
 Desktop identity belongs to PulseCord itself. The Discord page receives a Chromium-compatible User-Agent with an explicit `PulseCord/<version>` product token, so camera and display capture follow the standards-based WebRTC path implemented by Electron. The API and Gateway metadata independently classify the session as `Discord Client`, preserving desktop presence without advertising Discord's proprietary `DiscordNative` bridge. PulseCord neither exposes nor imitates another desktop client's private native bridge.
 
@@ -40,7 +52,7 @@ Plugins still compile into the bundle rather than loading arbitrary local or rem
 
 ## PulsePanel and settings integration
 
-PulsePanel is mounted in a closed Shadow DOM root. It is independent of the page's component tree and private module loader. PulsePanel is the quick control surface, while detailed configuration lives in a dedicated PulseCord category inside Discord's visible settings shell.
+PulsePanel is mounted in a closed Shadow DOM root, inside the embedded Discord view (not the shell's own chrome) — it is independent of the page's component tree and private module loader, and its floating launcher/panel is now visually contained to the Discord view's bounds rather than the whole window. Moving PulsePanel's controls into the shell's own navigation rail is future work, not part of this milestone. PulsePanel is the quick control surface, while detailed configuration lives in a dedicated PulseCord category inside Discord's visible settings shell.
 
 The category contains Plugins, Themes, and PulseCord Shortcuts. When a native System shortcut page is available, the PulseCord entry routes to that already-rendered page and hides the duplicate System navigation item. This preserves Discord's unchanged standard-shortcut list and keycaps while mounting original PulseCord editor markup and behavior above it. No private Discord module or modified-client code is imported.
 
@@ -72,6 +84,8 @@ What is covered, and how:
 - **`main/security.ts`, `main/desktop-identity.ts`** — the pure/exported functions, plus `configureDesktopIdentity` exercised against a hand-written fake `Session` object (no real Electron `Session` is constructible outside a running app).
 - **`main/settings-store.ts`** — fully exercised against a real temporary directory on disk (it only depends on `node:fs/promises`, not Electron), including the corrupt-file quarantine and its rotation.
 - **`renderer/pulsecore/`** — `EventBus` and `CommandRegistry` as pure logic; `PluginRuntime` and `buildPluginContext` against a `jsdom` document (installed as ambient globals for the duration of a test) and an in-memory `FakeBridge` standing in for the preload bridge. These tests are what hold the engine's core promises to account: capability gating, resource cleanup ordering, and that a runtime crash in one plugin cannot affect another.
+- **`shared/shell-layout.ts`** — `computeServiceViewBounds` as a pure function, including the edge cases that matter for a real window (narrower than the rail, zero-sized while minimizing, fractional sizes).
+- **`shell/navigation.ts`** — `mountShellNavigation` against a `jsdom` document: every declared destination renders, unbuilt ones are genuinely disabled (not just styled to look that way), and the safe-mode badge only appears when the runtime environment says so.
 
 What is intentionally not unit-tested: `main/index.ts` (wires everything together and calls `app.whenReady()` at module load — only safe to run inside a real Electron process) and the Electron-native pieces of `main/startup.ts` and `main/security.ts` (`chooseDisplaySource`'s `BrowserWindow`/`desktopCapturer` calls, `app.setLoginItemSettings`). These stay covered by the manual packaged-app smoke check described in the validation rules, not by `tests/`.
 

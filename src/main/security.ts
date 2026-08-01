@@ -11,12 +11,24 @@ const PICKER_READY = "pulsecord:display-picker:ready";
 const PICKER_SOURCES = "pulsecord:display-picker:sources";
 const PICKER_CHOOSE = "pulsecord:display-picker:choose";
 const PICKER_CANCEL = "pulsecord:display-picker:cancel";
-const OFFLINE_PAGE_URL = pathToFileURL(path.join(__dirname, "offline.html")).toString();
+/**
+ * The only local pages PulseCord itself ships and trusts as IPC senders. The
+ * shell window's own chrome and the offline fallback are separate renderer
+ * contexts, so both need to be named explicitly — anything else under file://
+ * stays untrusted.
+ */
+export const LOCAL_PAGE_FILENAMES = ["shell.html", "offline.html"] as const;
+
+export function localPageUrls(directory: string): ReadonlySet<string> {
+  return new Set(LOCAL_PAGE_FILENAMES.map((name) => pathToFileURL(path.join(directory, name)).toString()));
+}
+
+const TRUSTED_LOCAL_PAGES = localPageUrls(__dirname);
 const DISPLAY_SOURCES_TIMEOUT_MS = 8_000;
 
 export function isTrustedIpcSender(value: string): boolean {
   if (isTrustedDiscordUrl(value)) return true;
-  return value === OFFLINE_PAGE_URL;
+  return TRUSTED_LOCAL_PAGES.has(value);
 }
 
 export function configureSession(session: Session, getMainWindow: () => BrowserWindow | undefined): void {
@@ -54,10 +66,26 @@ async function chooseDisplaySource(parent: BrowserWindow | undefined): Promise<E
   });
 }
 
-export function hardenWindow(window: BrowserWindow): void {
-  const { webContents } = window;
+/**
+ * Locks the embedded service surface to Discord: in-place navigation may only
+ * reach a trusted Discord origin, popups are never opened as real windows (a
+ * trusted target loads in place, anything else goes to the system browser),
+ * and webviews cannot be attached.
+ */
+export function hardenServiceContents(webContents: Electron.WebContents): void {
   webContents.on("will-navigate", (event, url) => { if (isTrustedDiscordUrl(url)) return; event.preventDefault(); void openExternalSafely(url); });
-  webContents.setWindowOpenHandler(({ url }) => { if (isTrustedDiscordUrl(url)) void window.loadURL(url); else void openExternalSafely(url); return { action: "deny" }; });
+  webContents.setWindowOpenHandler(({ url }) => { if (isTrustedDiscordUrl(url)) void webContents.loadURL(url); else void openExternalSafely(url); return { action: "deny" }; });
+  webContents.on("will-attach-webview", (event) => event.preventDefault());
+}
+
+/**
+ * The shell's own chrome renders a local page and must never navigate at all.
+ * Any attempt — a stray link, an injected redirect — is cancelled and handed
+ * to the system browser instead.
+ */
+export function hardenShellContents(webContents: Electron.WebContents): void {
+  webContents.on("will-navigate", (event, url) => { event.preventDefault(); void openExternalSafely(url); });
+  webContents.setWindowOpenHandler(({ url }) => { void openExternalSafely(url); return { action: "deny" }; });
   webContents.on("will-attach-webview", (event) => event.preventDefault());
 }
 async function openExternalSafely(value: string): Promise<void> { try { const url = new URL(value); if (["https:", "http:", "mailto:"].includes(url.protocol)) await shell.openExternal(url.toString()); } catch { /* ignore invalid URLs */ } }

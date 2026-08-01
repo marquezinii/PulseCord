@@ -50,9 +50,18 @@ await Promise.all([
     platform: "node",
     format: "cjs",
     target: "chrome140"
+  }),
+  build({
+    ...shared,
+    entryPoints: [path.join(root, "src/shell/index.ts")],
+    outfile: path.join(dist, "shell.cjs"),
+    platform: "node",
+    format: "cjs",
+    target: "chrome140"
   })
 ]);
 
+await cp(path.join(root, "static/shell.html"), path.join(dist, "shell.html"));
 await cp(path.join(root, "static/offline.html"), path.join(dist, "offline.html"));
 await cp(path.join(root, "assets/pulsecord-logo.png"), path.join(dist, "pulsecord-logo.png"));
 await cp(path.join(root, "assets/pulsepanel-art.png"), path.join(dist, "pulsepanel-art.png"));

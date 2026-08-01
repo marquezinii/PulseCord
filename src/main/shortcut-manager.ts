@@ -1,4 +1,4 @@
-import { globalShortcut, type BrowserWindow } from "electron";
+import { globalShortcut, type BrowserWindow, type WebContents } from "electron";
 
 import { IPC, type AppSettings, type ShortcutAction, type ShortcutBinding } from "../shared/contracts";
 
@@ -24,10 +24,17 @@ const BACKGROUND_ACTIONS = new Set<ShortcutAction>(["toggle-mute", "toggle-deafe
 
 export class ShortcutManager {
   readonly #getWindow: () => BrowserWindow | undefined;
+  readonly #getServiceContents: () => WebContents | undefined;
   readonly #registered = new Map<string, ShortcutBinding>();
 
-  constructor(getWindow: () => BrowserWindow | undefined) {
+  /**
+   * Shortcuts raise and focus the shell window, but deliver input and events to
+   * the embedded service surface — that is where Discord and PulseCore live,
+   * not in the shell's own chrome.
+   */
+  constructor(getWindow: () => BrowserWindow | undefined, getServiceContents: () => WebContents | undefined) {
     this.#getWindow = getWindow;
+    this.#getServiceContents = getServiceContents;
   }
 
   configure(settings: AppSettings): string[] {
@@ -124,11 +131,12 @@ export class ShortcutManager {
   #run(id: string): void {
     const binding = this.#registered.get(id);
     const window = this.#getWindow();
-    if (!binding || !window || window.isDestroyed()) return;
+    const contents = this.#getServiceContents();
+    if (!binding || !window || window.isDestroyed() || !contents || contents.isDestroyed()) return;
 
     if (binding.action === "toggle-panel") {
       this.#showAndFocus(window);
-      window.webContents.send(IPC.shortcutTriggered, binding.action);
+      contents.send(IPC.shortcutTriggered, binding.action);
       return;
     }
 
@@ -136,12 +144,13 @@ export class ShortcutManager {
     if (!chord) return;
     if (!BACKGROUND_ACTIONS.has(binding.action)) this.#showAndFocus(window);
 
-    window.webContents.sendInputEvent({
+    contents.focus();
+    contents.sendInputEvent({
       type: "keyDown",
       keyCode: chord.keyCode,
       modifiers: chord.modifiers ?? []
     });
-    window.webContents.sendInputEvent({
+    contents.sendInputEvent({
       type: "keyUp",
       keyCode: chord.keyCode,
       modifiers: chord.modifiers ?? []

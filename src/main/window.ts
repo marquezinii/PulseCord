@@ -1,17 +1,22 @@
 import path from "node:path";
 
-import { BrowserWindow, Menu, app } from "electron";
+import { BrowserWindow, Menu, app, type WebContents } from "electron";
 
-import { hardenWindow } from "./security";
-
-const DISCORD_APP_URL = "https://discord.com/app";
+import { hardenShellContents } from "./security";
+import { createServiceView, layoutServiceView } from "./service-view";
 
 interface WindowOptions {
   onRendererCrash(reason: string): void;
   userAgent: string;
 }
 
-export function createMainWindow({ onRendererCrash, userAgent }: WindowOptions): BrowserWindow {
+export interface ShellWindow {
+  window: BrowserWindow;
+  /** The embedded Discord surface — the target for input, shortcuts, and PulseCore. */
+  serviceContents: WebContents;
+}
+
+export function createMainWindow({ onRendererCrash, userAgent }: WindowOptions): ShellWindow {
   const developmentIcon = path.join(app.getAppPath(), "build", "icon.png");
 
   const window = new BrowserWindow({
@@ -21,50 +26,34 @@ export function createMainWindow({ onRendererCrash, userAgent }: WindowOptions):
     minHeight: 620,
     show: false,
     title: "PulseCord",
-    backgroundColor: "#111319",
+    backgroundColor: "#101218",
     ...(!app.isPackaged ? { icon: developmentIcon } : {}),
     autoHideMenuBar: true,
     webPreferences: {
-      preload: path.join(__dirname, "preload.cjs"),
+      preload: path.join(__dirname, "shell.cjs"),
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
       webSecurity: true,
       allowRunningInsecureContent: false,
-      spellcheck: true,
       devTools: !app.isPackaged
     }
   });
 
   Menu.setApplicationMenu(null);
-  hardenWindow(window);
-  window.webContents.setUserAgent(userAgent);
-
-  const repairInvalidZoom = (): void => {
-    const zoomFactor = window.webContents.getZoomFactor();
-    if (!Number.isFinite(zoomFactor) || zoomFactor < 0.5 || zoomFactor > 2) {
-      window.webContents.setZoomFactor(1);
-    }
-  };
-
-  repairInvalidZoom();
-  window.webContents.on("did-finish-load", repairInvalidZoom);
-
-  window.once("ready-to-show", () => window.show());
-  window.webContents.on("page-title-updated", (event) => {
-    event.preventDefault();
-    window.setTitle("PulseCord");
-  });
+  hardenShellContents(window.webContents);
 
   window.webContents.on("render-process-gone", (_event, details) => {
     if (details.reason !== "clean-exit") onRendererCrash(details.reason);
   });
 
-  window.webContents.on("did-fail-load", (_event, errorCode, _description, _url, isMainFrame) => {
-    if (!isMainFrame || errorCode === -3 || window.isDestroyed()) return;
-    void window.loadFile(path.join(__dirname, "offline.html"));
-  });
+  const serviceView = createServiceView({ userAgent, onCrash: onRendererCrash });
+  window.contentView.addChildView(serviceView);
+  layoutServiceView(window, serviceView);
+  window.on("resize", () => layoutServiceView(window, serviceView));
 
-  void window.loadURL(DISCORD_APP_URL);
-  return window;
+  window.once("ready-to-show", () => window.show());
+  void window.loadFile(path.join(__dirname, "shell.html"));
+
+  return { window, serviceContents: serviceView.webContents };
 }

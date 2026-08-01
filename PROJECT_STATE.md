@@ -1,14 +1,23 @@
 # Estado do Projeto — PulseCord
 
-_Atualizado em 28/07/2026._
+_Atualizado em 01/08/2026._
 
 ## Objetivo
 
-PulseCord é um shell desktop independente, público e open source para usar o
-Discord oficial em uma aplicação Electron segura. O produto está na fase de
-fundação: disponibiliza personalização própria, temas locais, atalhos globais e
-uma base de plugins first-party, sem instalador ou carregamento de plugins de
-terceiros.
+PulseCord está em reformulação para ser um ambiente desktop próprio — não mais
+"a janela do Discord com extras por cima". O Discord passa a ser um serviço
+conectado, renderizado dentro de um painel do shell do PulseCord, que tem sua
+própria navegação e, com o tempo, suas próprias telas (central de atividade,
+organização, automações, biblioteca de temas, plugins, comandos, painéis e
+configurações). O "aperto de mão": PulseCord tem identidade e recursos
+próprios, mas não finge ser nem substitui o protocolo privado do Discord — o
+Discord real (API, Gateway, nuvem de amigos/servidores/Nitro) continua sendo
+usado como está.
+
+Esse pivô está em andamento por marcos independentes, cada um com seu próprio
+ciclo desenho→implementação→validação. Primeiro marco entregue: o esqueleto
+do shell (nav própria + Discord como painel interno). Os próximos marcos
+(cada tela nova) ainda não têm data.
 
 O checkout canônico é `C:\Projetos\PulseCord`. O repositório remoto é
 `marquezinii/PulseCord` e a branch de desenvolvimento ativa é
@@ -16,14 +25,20 @@ O checkout canônico é `C:\Projetos\PulseCord`. O repositório remoto é
 
 ## Arquitetura e tecnologias
 
-- Electron 41, Node.js 24+, npm 11+, TypeScript 6 e esbuild;
-- processos separados: `src/main`, `src/preload`, `src/renderer` e `src/shared`;
-- janela isolada e sandboxed que carrega somente `https://discord.com/app`;
-- IPC versionado, estreito e validado no processo principal;
+- Electron 41 (decisão deliberada, não vamos migrar para Tauri/Wails — ver
+  "Decisões técnicas e limites"), Node.js 24+, npm 11+, TypeScript 6 e esbuild;
+- processos separados: `src/main`, `src/preload`, `src/shell`, `src/renderer`
+  e `src/shared`;
+- a `BrowserWindow` principal carrega o shell próprio do PulseCord
+  (`static/shell.html`); o Discord é renderizado numa `WebContentsView`
+  separada, embutida como painel dentro da área de conteúdo do shell — não é
+  mais a janela inteira;
+- IPC versionado, estreito e validado no processo principal, com allowlist
+  explícita de páginas locais confiáveis (`shell.html`, `offline.html`);
 - `PulseCore` para ciclo de vida de plugins first-party com capacidades
   limitadas e limpeza reversível;
-- `PulsePanel` em Shadow DOM fechado e integração de configurações sem importar
-  módulos privados do Discord;
+- `PulsePanel` em Shadow DOM fechado, hoje ainda dentro do painel do Discord;
+  integração de configurações sem importar módulos privados do Discord;
 - persistência local atômica, schema versionado, recuperação por safe mode e
   atalhos globais registrados explicitamente pelo usuário.
 
@@ -32,19 +47,26 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
 
 ## Estrutura relevante
 
-- `src/main`: janela, segurança, IPC, persistência, atalhos e recuperação;
-- `src/preload`: ponte restrita entre a página e o processo principal;
+- `src/main`: janela do shell, view de serviço (Discord embutido), segurança,
+  IPC, persistência, atalhos e recuperação;
+- `src/preload`: ponte restrita entre a página do Discord e o processo
+  principal (usada pela `WebContentsView` de serviço);
+- `src/shell`: chrome nativo do PulseCord (nav lateral hoje; `static/shell.html`
+  é o HTML estático correspondente);
 - `src/renderer`: PulsePanel, branding, configurações, temas e PulseCore
-  (`src/renderer/pulsecore`: motor de plugins first-party);
-- `src/shared`: contratos versionados compartilhados;
+  (`src/renderer/pulsecore`: motor de plugins first-party) — injetado dentro
+  da página do Discord, dentro da view de serviço;
+- `src/shared`: contratos versionados compartilhados, incluindo
+  `shell-layout.ts` (geometria da nav, compartilhada entre main e shell);
 - `assets` e `build`: identidade visual e ícones do produto;
-- `scripts`: build, verificação clean-room e launcher de desenvolvimento;
+- `scripts`: build, testes, verificação clean-room e launcher de
+  desenvolvimento;
 - `docs`: decisões e políticas técnicas;
 - `outputs`: pacotes locais gerados, sem publicação automática.
 
 ## Funcionalidades concluídas
 
-- Shell Electron com login no domínio oficial, sem coleta de senha do Discord;
+- App Electron com login no domínio oficial do Discord, sem coleta de senha;
 - identidade desktop do PulseCord, sem ponte privada de outro cliente;
 - categoria PulseCord nas configurações: Plugins, Themes e PulseCord Shortcuts;
 - editor de CSS local com preview, persistência explícita, safe mode e bloqueio
@@ -91,22 +113,63 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
   compartilhado para nomear ações que integrações futuras (paleta de
   comandos, atalhos) poderão acionar sem alterar o motor. Continua sem
   nenhum plugin first-party habilitado; o motor está pronto, mas ainda vazio.
+- **Marco 1 do pivô de ambiente próprio: esqueleto do shell.** A janela
+  principal não carrega mais `discord.com/app` diretamente; carrega
+  `static/shell.html` (`src/shell/`), e o Discord passa a rodar numa
+  `WebContentsView` separada (`src/main/service-view.ts`), embutida como
+  painel dentro da área de conteúdo, à direita de uma nav lateral própria
+  (`src/shared/shell-layout.ts` define a largura, compartilhada entre main e
+  shell para não desalinhar). A nav mostra 5 destinos futuros (Central de
+  Atividade, Organização, Automações, Temas, Configurações) como placeholders
+  explicitamente desabilitados — nenhuma tela de conteúdo nova foi construída
+  ainda, por decisão de escopo deste marco. `isTrustedIpcSender` passou a
+  reconhecer duas páginas locais confiáveis por caminho exato (`shell.html`,
+  `offline.html`) em vez de uma só. Atalhos globais continuam focando/exibindo
+  a janela do shell, mas entregam eventos de teclado para a view do Discord
+  especificamente. PulsePanel e todo o PulseCore continuam intactos, agora
+  hospedados dentro da view de serviço em vez da janela inteira — nenhuma
+  regressão funcional, só nova casa. Validado visualmente: nav renderiza,
+  Discord carrega e autentica dentro do painel, redimensionamento (incluindo
+  maximizar) mantém nav e painel do Discord alinhados sem sobreposição nem
+  espaço morto.
 
 ## Funcionalidades em andamento
 
-- Nenhuma implementação de produto em andamento neste momento.
+- Nenhuma implementação de produto em andamento neste momento. Próximo passo
+  do pivô de ambiente próprio é escolher e desenhar o primeiro marco de
+  conteúdo (provavelmente Central de Atividade), como um sub-projeto
+  independente com seu próprio ciclo de desenho.
 
 ## Planejado
 
+Pivô de ambiente próprio (PulseCord como ambiente com Discord como serviço
+conectado, não mais como app que É o Discord) — cada item abaixo é um marco
+independente, um de cada vez, cada um com seu próprio desenho antes de
+implementar:
+
+- Central de Atividade: tela inicial/dashboard do shell;
+- Organização: espaço próprio de workspace, fora do modelo Discord;
+- Automações: automações permitidas pelo usuário sobre eventos do Discord;
+- Biblioteca de Temas: evolução do editor de CSS atual (hoje dentro das
+  settings do Discord) para uma tela própria do shell, com múltiplos temas;
+- Painel de Configurações unificado: mover Plugins/Temas/Atalhos (hoje dentro
+  das settings do Discord) e o PulsePanel para viver nas telas do shell;
 - Modelo seguro para plugins externos: manifestos, permissões, assinaturas e
   isolamento de falhas antes de executar JavaScript de terceiros;
-- evolução da biblioteca de temas e experiência de personalização;
-- testes automatizados mais amplos para integrações visíveis do Discord;
 - instalador e fluxo de release somente após autorização explícita e validação
   de segurança/distribuição.
 
 ## Decisões técnicas e limites
 
+- Decisão de 01/08/2026: permanecer em Electron em vez de migrar para
+  Tauri/Wails. Motivo: o PulseCord depende pesado de APIs específicas de
+  Chromium/Electron já testadas e auditadas (`desktopCapturer`,
+  `setDisplayMediaRequestHandler`, reescrita de headers via
+  `session.webRequest`, `sendInputEvent`), que são mais fracas ou inconsistentes
+  entre SOs nos webviews nativos que Tauri/Wails usam. Trocar de runtime no
+  meio do pivô de ambiente próprio duplicaria o risco arquitetural. Revisitar
+  isoladamente se RAM/tamanho de instalador virar problema real depois de
+  rodando — não junto com outra mudança grande.
 - Clean-room é obrigatório: não usar código, base ou runtime de outros clientes
   modificados sem autorização explícita.
 - O aplicativo usa o Discord oficial na web; integrações de interface dependem

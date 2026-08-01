@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'" />
+    <title>PulseCord</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --pulsecord-nav-width: 72px;
+        --rail: #0d0e13;
+        --rail-border: #24262f;
+        --idle: #7d8496;
+        --accent: #a78bfa;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: #101218;
+        color: #f3f4f7;
+        font: 13px "Segoe UI Variable Text", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+      }
+      #pulsecord-nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: var(--pulsecord-nav-width);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        padding: 14px 0;
+        border-right: 1px solid var(--rail-border);
+        background: var(--rail);
+      }
+      .brand {
+        flex: 0 0 auto;
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        background: url("pulsecord-logo.png") center / cover no-repeat;
+        box-shadow: 0 8px 20px #0009;
+      }
+      .destinations {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        width: 100%;
+      }
+      .destination {
+        width: 44px;
+        height: 44px;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: 0;
+        border-radius: 13px;
+        background: transparent;
+        color: var(--idle);
+        cursor: pointer;
+        transition: background .15s ease, color .15s ease;
+      }
+      .destination svg { width: 21px; height: 21px; }
+      .destination:hover:not(:disabled) { background: #1a1c25; color: #e7e9ef; }
+      .destination.active { background: rgba(139, 92, 246, .16); color: var(--accent); }
+      .destination:disabled { opacity: .34; cursor: default; }
+      .destination:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .safe-badge {
+        flex: 0 0 auto;
+        padding: 3px 7px;
+        border-radius: 6px;
+        background: rgba(236, 169, 73, .16);
+        color: #f0bd70;
+        font-size: 8.5px;
+        font-weight: 800;
+        letter-spacing: .1em;
+      }
+    </style>
+  </head>
+  <body>
+    <aside id="pulsecord-nav" aria-label="Navegação do PulseCord"></aside>
+  </body>
+</html>

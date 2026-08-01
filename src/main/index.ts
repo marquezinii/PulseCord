@@ -27,6 +27,7 @@ import { createMainWindow } from "./window";
 
 const safeMode = process.argv.includes("--safe-mode");
 let mainWindow: BrowserWindow | undefined;
+let serviceContents: Electron.WebContents | undefined;
 
 app.setName("PulseCord");
 if (process.platform === "win32") app.setAppUserModelId("app.pulsecord.desktop");
@@ -47,7 +48,10 @@ if (!hasSingleInstanceLock) {
   app.whenReady().then(async () => {
     const settings = new SettingsStore(app.getPath("userData"));
     const recovery = new RecoveryStore(app.getPath("userData"));
-    const shortcuts = new ShortcutManager(() => mainWindow);
+    const shortcuts = new ShortcutManager(
+      () => mainWindow,
+      () => serviceContents
+    );
 
     await disablePulseCordAutoStart();
     const unavailableShortcuts = shortcuts.configure(await settings.get());
@@ -61,15 +65,18 @@ if (!hasSingleInstanceLock) {
     const openWindow = (): void => {
       if (mainWindow && !mainWindow.isDestroyed()) return;
 
-      mainWindow = createMainWindow({
+      const shell = createMainWindow({
         userAgent: desktopUserAgent,
         onRendererCrash: (reason) => {
           void handleRendererCrash(recovery, reason);
         }
       });
+      mainWindow = shell.window;
+      serviceContents = shell.serviceContents;
 
       mainWindow.on("closed", () => {
         mainWindow = undefined;
+        serviceContents = undefined;
       });
 
       setTimeout(() => {
