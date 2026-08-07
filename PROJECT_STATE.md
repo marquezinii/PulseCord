@@ -62,6 +62,8 @@ API de plugins, roadmap e política clean-room estão em `docs/`.
 - `scripts`: build, testes, verificação clean-room e launcher de
   desenvolvimento;
 - `docs`: decisões e políticas técnicas;
+- `.ai/tasks`: relatórios de handoff de tarefas de IA isoladas (branches
+  `ai/*`), consumidos na integração — ver `AI_RULES.md`;
 - `outputs`: pacotes locais gerados, sem publicação automática.
 
 ## Funcionalidades concluídas

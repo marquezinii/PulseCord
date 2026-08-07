@@ -31,14 +31,64 @@ relacionadas na mesma tarefa.
 
 ## Git e commits
 
-- Todo desenvolvimento acontece em `dev/proxima-versao`.
-- `main` representa exclusivamente o estado estável já integrado/publicado.
+- `dev/proxima-versao` é a branch oficial de integração (próxima versão
+  consolidada). `main` representa exclusivamente o estado estável já
+  integrado/publicado.
+- Pessoas e múltiplos agentes de IA podem trabalhar no PulseCord ao mesmo
+  tempo. Assuma sempre que pode existir outro agente com uma branch ou
+  worktree própria em andamento; nunca trate o checkout como uso exclusivo.
 - Ao encerrar uma tarefa concluída, criar automaticamente um commit local.
 - Cada commit deve ser atômico, descritivo e conter somente arquivos da tarefa.
 - Antes do commit, verificar `git diff --check`, arquivos acidentais, segredos,
   builds, caches e dados locais.
 - Não reescrever histórico, fazer force-push, squash ou apagar branches sem
   solicitação explícita do usuário.
+
+## Branches e worktrees para tarefas de IA
+
+Para uma tarefa isolada de IA (não uma correção trivial feita diretamente a
+pedido do usuário em `dev/proxima-versao`):
+
+1. Identificar a própria identidade de agente quando possível (`codex`,
+   `claude`, `opencode` etc.); se não for possível determinar, usar `agent`.
+2. Criar a branch `ai/<agente>/<slug-da-tarefa>` a partir do estado atual de
+   `dev/proxima-versao`, com slug curto e descritivo.
+3. Criar um Git worktree exclusivo para essa branch (`git worktree add`) em
+   vez de trocar o checkout compartilhado. Se já estiver rodando dentro de um
+   worktree exclusivo da própria tarefa, reutilizá-lo. Se worktrees não forem
+   tecnicamente viáveis no ambiente, usar a alternativa mais segura possível
+   sem sobrescrever ou trocar arbitrariamente um checkout que possa ter
+   alterações de outra tarefa.
+4. Implementar, testar e commitar somente dentro desse worktree/branch.
+5. Nunca destruir um worktree ou branch `ai/*` alheio para liberar espaço ou
+   conseguir criar o próprio.
+
+Regras de segurança em desenvolvimento concorrente — nenhum agente pode:
+
+- apagar ou sobrescrever trabalho de outra tarefa/branch/worktree;
+- usar `git reset --hard`, `git clean -fd` ou checkout destrutivo sobre
+  alterações que não criou;
+- fazer force-push ou reescrever histórico publicado;
+- apagar branches ou worktrees `ai/*` não integrados;
+- resolver conflito escolhendo `ours`/`theirs` cegamente ou sincronizando um
+  arquivo inteiro por uma das versões — conflitos devem ser lidos e resolvidos
+  semanticamente, preservando as duas intenções quando forem compatíveis;
+- fazer refatoração oportunista ou reformatação em massa fora do escopo da
+  tarefa, mesmo durante uma integração.
+
+Antes de mexer numa área tocada por outra tarefa, ler a implementação atual,
+os testes relacionados e, quando necessário, o histórico — não reverter uma
+decisão existente sem entender por que ela existe.
+
+## Relatórios de tarefa (`.ai/tasks/`)
+
+Cada tarefa isolada em branch `ai/*` registra seu handoff em
+`.ai/tasks/<identificador-unico>.md`: agente, objetivo, branch, status,
+resumo das mudanças, arquivos/áreas principais, decisões relevantes, testes
+executados e resultado, bugs encontrados, pendências, commits, e observações
+para quem for integrar. Curto e factual. `.ai/tasks/` é a área de handoff de
+tarefas paralelas — `PROJECT_STATE.md` não é o lugar para isso (ver seção
+seguinte).
 
 ## Operações remotas
 
@@ -92,6 +142,40 @@ Documentação de governança (`AI_RULES.md` e documentos correlatos) e
 - `docs/ARCHITECTURE.md` registra decisões de arquitetura que precisam durar.
 - Atualizar a documentação no mesmo commit da mudança que ela descreve.
 - Não afirmar validação, suporte ou segurança sem evidência verificável.
+- **`PROJECT_STATE.md` é exclusivamente o estado oficial e consolidado.** Uma
+  branch `ai/*` isolada nunca o edita: enquanto a tarefa não está integrada em
+  `dev/proxima-versao`, funcionalidade, teste ou bug encontrado nela vive só em
+  `.ai/tasks/<tarefa>.md`. Só o agente que está integrando (ou uma tarefa
+  explicitamente autorizada a trabalhar direto em `dev/proxima-versao`)
+  atualiza `PROJECT_STATE.md`, e só com o que de fato entrou na branch de
+  integração. Se uma branch `ai/*` tiver alterado `PROJECT_STATE.md` por
+  engano, o integrador ignora essa edição e reincorpora apenas o conteúdo
+  técnico válido a partir do relatório em `.ai/tasks/`.
+
+## Modo integrador
+
+Pedidos equivalentes a "integrar tarefas/branches", "consolidar trabalhos
+concluídos" ou "preparar `dev/proxima-versao`" ativam este modo:
+
+1. Ler `AI_RULES.md` e `PROJECT_STATE.md` integralmente.
+2. Levantar branches `ai/*`, worktrees e relatórios em `.ai/tasks/`.
+3. Determinar quais tarefas estão de fato concluídas (relatório com status
+   "pronto para integração") e a ordem segura de integração quando houver
+   dependência entre elas.
+4. Integrar uma tarefa por vez em `dev/proxima-versao`, resolvendo conflitos
+   semanticamente (ver seção anterior) — nunca por escolha cega de lado.
+5. Rodar `npm run check` (e `npm run build`/`npm run package:dir` quando a
+   mudança afetar pacote, processo principal ou recursos) após cada
+   integração relevante; corrigir incompatibilidades introduzidas pela própria
+   integração.
+6. Atualizar `PROJECT_STATE.md` com o que realmente entrou, marcar a tarefa
+   como integrada no respectivo `.ai/tasks/<tarefa>.md`.
+7. Só depois de uma tarefa comprovadamente integrada e validada, considerar
+   remover seu worktree/branch local temporário. Branch remota só é removida
+   com autorização explícita do usuário.
+
+Nenhuma branch `ai/*` é publicada, empacotada ou usada como base de release
+diretamente — sempre passa por `dev/proxima-versao` integrada.
 
 ## Limites de atuação
 
